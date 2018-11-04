@@ -51,6 +51,7 @@ abstract public class Nav_Routines extends LinearOpMode {
 
     int mil1startticks;
     int mil2startticks;
+    int winchstartticks;
 
     double basealpha;
     double basealpha2;
@@ -80,6 +81,7 @@ abstract public class Nav_Routines extends LinearOpMode {
 
         mil1startticks = mil1.getCurrentPosition();
         mil2startticks = mil2.getCurrentPosition();
+        winchstartticks = winchmotor.getCurrentPosition();
 
         leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -165,9 +167,9 @@ abstract public class Nav_Routines extends LinearOpMode {
 
     } // end of turn_to_heading
 
-    public boolean go_forward(double inches_to_travel, int heading, double speed, boolean runtimeoveride, boolean lookforcsalpha, int csalpha_min_inches) {
+    public boolean go_forward(double inches_to_travel, double heading, double speed, boolean runtimeoveride, boolean lookforcsalpha, int csalpha_min_inches) {
 
-        DbgLog.msg("10435 starting GO_FORWARD inches:" + Double.toString(inches_to_travel) + " heading:" + Integer.toString(heading) + " speed:" + Double.toString(speed));
+        DbgLog.msg("10435 starting GO_FORWARD inches:" + Double.toString(inches_to_travel) + " heading:" + Double.toString(heading) + " speed:" + Double.toString(speed));
 
         ElapsedTime log_timer = new ElapsedTime();
 
@@ -382,7 +384,6 @@ abstract public class Nav_Routines extends LinearOpMode {
     }
 
     public boolean go_sideways_to_wall(double heading, double power, double walldistance, boolean useleft, boolean findline) {
-
         double stickpower = power;
         double angleradians;
         double leftfrontpower;
@@ -435,7 +436,7 @@ abstract public class Nav_Routines extends LinearOpMode {
             if (useleft) {
                 inchesreadfromwall = leftdistancesensor.getDistance(DistanceUnit.INCH);
             } else {
-                inchesreadfromwall = rightdistancesensor.getDistance(DistanceUnit.INCH);
+                inchesreadfromwall = rightdistancesensor.rawUltrasonic() / 2.5;
             }
 
             turningpower = -go_straight_adjustment(heading) * (power * 2);
@@ -471,8 +472,9 @@ abstract public class Nav_Routines extends LinearOpMode {
         return linefound;
     }
 
-    public void wallfollow(double inches_to_travel, int heading, double speed, double walldistance, boolean left, boolean gotocrater) {
-        DbgLog.msg("10435 starting WALL FOLLOW inches:" + Double.toString(inches_to_travel) + " heading:" + Integer.toString(heading) + " speed:" + Double.toString(speed));
+    public void wallfollow(double inches_to_travel, double heading, double speed, double walldistance, boolean left, boolean gotocrater) {
+
+        DbgLog.msg("10435 starting WALL FOLLOW inches:" + Double.toString(inches_to_travel) + " heading:" + Double.toString(heading) + " speed:" + Double.toString(speed));
 
         ElapsedTime log_timer = new ElapsedTime();
 
@@ -540,12 +542,12 @@ abstract public class Nav_Routines extends LinearOpMode {
             if (left) {
                 distance_off = leftdistancesensor.getDistance(DistanceUnit.INCH) - walldistance;
             } else {
-                distance_off = rightdistancesensor.getDistance(DistanceUnit.INCH) - walldistance;
+                distance_off = rightdistancesensor.rawUltrasonic() / 2.5 - walldistance;
             }
 
-            if (Math.abs(distance_off) >= 1 && gotocrater) {
+            if (Math.abs(distance_off) >= 1.5 && gotocrater) {
                 go_sideways_to_wall(heading, .25, walldistance, left, false);
-            } else if (Math.abs(distance_off) >= 1) {
+            } else if (Math.abs(distance_off) >= 1.5) {
                 linedetected = go_sideways_to_wall(heading, .25, walldistance, left, true);
             }
 
@@ -644,7 +646,17 @@ abstract public class Nav_Routines extends LinearOpMode {
     }
 
     public void winchdown() {
+        int winchticks;
 
+        winchticks = winchmotor.getCurrentPosition() - winchstartticks;
+        while (winchticks > 200) {
+            winchticks = winchmotor.getCurrentPosition() - winchstartticks;
+            winchmotor.setPower(-1);
+        }
+        winchmotor.setPower(0);
+    }
+
+    public void winchup() {
         boolean magnetistouching = false;
 
         while (!magnetistouching && opModeIsActive()) {
@@ -666,19 +678,19 @@ abstract public class Nav_Routines extends LinearOpMode {
             if (mil1ticks < 300) {
                 mil1.setPower(-.4);
                 mil2.setPower(-.4);
-            } else if (mil1ticks > 310){
+            } else if (mil1ticks > 310) {
                 mil1.setPower(.3);
                 mil2.setPower(.3);
-            } else{
+            } else {
                 liftisout = true;
             }
         }
 
         boolean liftisback = false;
 
-        while(!liftisback && opModeIsActive()){
+        while (!liftisback && opModeIsActive()) {
             mil1ticks = mil1startticks - mil1.getCurrentPosition();
-            if (mil1ticks > 10){
+            if (mil1ticks > 10) {
                 mil1.setPower(.4);
                 mil2.setPower(.4);
             } else {
@@ -714,7 +726,7 @@ abstract public class Nav_Routines extends LinearOpMode {
     private boolean checkfrontcolorsensor() {
         boolean colorfound = false;
 
-        if (frontcs.red() >= 250 || frontcs.blue() >= 250) {
+        if (frontcs.red() >= 200 || frontcs.blue() >= 200) {
             colorfound = true;
         }
 
@@ -769,7 +781,21 @@ abstract public class Nav_Routines extends LinearOpMode {
             current_heading = 360 - current_heading;
         }
 
+        current_heading = shiftheading(current_heading);
+
         return current_heading;
+    }
+
+    private double shiftheading(double heading) {
+        double shiftvalue = 3;
+        heading = heading + shiftvalue;
+
+        if (heading >= 360){
+            heading = heading - 360;
+        } else if (heading < 0){
+            heading = heading + 360;
+        }
+        return heading;
     }
 }
 

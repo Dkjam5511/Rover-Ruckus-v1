@@ -7,6 +7,6 @@ public class FindLineTest extends Nav_Routines {
     @Override
     public void runOpMode() throws InterruptedException {
         Nav_Init();
-        wallfollow(120, 0, .3, 4, false, false);
+        wallfollow(120, 0, .3, 16, false, false);
     }
 }
