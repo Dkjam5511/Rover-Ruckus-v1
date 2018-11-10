@@ -1,5 +1,3 @@
-/* find line test 2 */
-
 package org.firstinspires.ftc.teamcode.Autonomous;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;

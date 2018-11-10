@@ -163,7 +163,7 @@ public class TeleOp_10435 extends OpMode {
         double servoturnpos = .2;
         double mineralboxpos;
         double maxmil1ticks = 351;
-        double droplevelticks = 100;
+        double droplevelticks = 80;
         double tickstoturnbox = 200; // box must be fully turned between droplevelticks and droplevelticks + tickstoturnbox
         double boxmil1ticks;
 
@@ -219,7 +219,7 @@ public class TeleOp_10435 extends OpMode {
             mineraldropmodetimer.reset();
         }
 
-        if (gamepad2.dpad_up && mineraldropmodetimer.seconds() >= .35) {
+        if (gamepad2.dpad_up && mineralarmendgametimer.seconds() >= .35) {
             mineralarmendgame = !mineralarmendgame;
             mineralarmendgametimer.reset();
         }
