@@ -132,7 +132,7 @@ public class TeleOp_10435 extends OpMode {
         leftRear.setPower(leftrearpower);
         rightRear.setPower(rightrearpower);
 
-        //Mineral Intake and box
+        //Mineral Intake
         if (gamepad2.right_bumper) {
             intakeon = true;
         }
@@ -142,13 +142,13 @@ public class TeleOp_10435 extends OpMode {
 
         if (intakeon) {
             if (gamepad1.right_trigger == 1) {
-                mineralintakeservo.setPosition(0);
-            } else {
                 mineralintakeservo.setPosition(1);
+            } else {
+                mineralintakeservo.setPosition(0);
             }
         } else {
             if (gamepad1.right_trigger == 1) {
-                mineralintakeservo.setPosition(0);
+                mineralintakeservo.setPosition(1);
             } else {
                 mineralintakeservo.setPosition(.5);
             }
@@ -185,7 +185,13 @@ public class TeleOp_10435 extends OpMode {
             xispressed = false;
             ytimer.reset();
         }
+        if (gamepad1.x) {
+            mineralknockservo.setPosition(.8);
+        }
 
+        if (gamepad1.b){
+            mineralknockservo.setPosition(1);
+        }
         if (gamepad2.x && xtimer.seconds() > .35) {
             xispressed = !xispressed;
             yispressed = false;

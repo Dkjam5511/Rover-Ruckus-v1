@@ -53,7 +53,7 @@ abstract public class Nav_Routines extends LinearOpMode {
     public double ticks_per_inch = wheel_encoder_ticks / (wheel_diameter * Math.PI);
 
     public double goforwardstopdetect = 2;
-    public int ignorecrater = 150;
+    public int ignorecrater = 240;
 
     int mil1startticks;
     int mil2startticks;
@@ -391,7 +391,7 @@ abstract public class Nav_Routines extends LinearOpMode {
         start_position_r_Front = rightFront.getCurrentPosition();
         start_position_r_Rear = rightRear.getCurrentPosition();
 
-        ticks_to_travel = (int)(inches * ticksperinch);
+        ticks_to_travel = (int) (inches * ticksperinch);
 
         // For the cos and sin calculations below in the mecanum power calcs, angleradians = 0 is straight to the right and 180 is straight to the left.
         // Negative numbers up to -180 are backward.  Postive numbers up to 180 are forward.
@@ -424,17 +424,16 @@ abstract public class Nav_Routines extends LinearOpMode {
             highest_ticks_traveled = Math.max(highest_ticks_traveled_l, highest_ticks_traveled_r);
 
 
-            if (highest_ticks_traveled >= ticks_to_travel){
+            if (highest_ticks_traveled >= ticks_to_travel) {
                 destinationreached = true;
             }
 
             turningpower = -go_straight_adjustment(heading) * (power * 2);
 
             leftfrontpower = stickpower * Math.cos(angleradians) + turningpower;
-            rightfrontpower = stickpower * Math.sin(angleradians) - turningpower ;
-            leftrearpower = stickpower * Math.sin(angleradians) + turningpower ;
+            rightfrontpower = stickpower * Math.sin(angleradians) - turningpower;
+            leftrearpower = stickpower * Math.sin(angleradians) + turningpower;
             rightrearpower = stickpower * Math.cos(angleradians) - turningpower;
-
 
 
             leftFront.setPower(leftfrontpower);
@@ -514,7 +513,7 @@ abstract public class Nav_Routines extends LinearOpMode {
             if (useleft) {
                 inchesreadfromwall = leftdistancesensor.getDistance(DistanceUnit.INCH);
             } else {
-                inchesreadfromwall = rightdistancesensor.rawUltrasonic() / 2.5;
+                inchesreadfromwall = rightdistancesensor.getDistance(DistanceUnit.INCH);
             }
 
             turningpower = -go_straight_adjustment(heading) * (power * 2);
@@ -616,7 +615,7 @@ abstract public class Nav_Routines extends LinearOpMode {
             if (left) {
                 distance_off = leftdistancesensor.getDistance(DistanceUnit.INCH) - walldistance;
             } else {
-                distance_off = rightdistancesensor.rawUltrasonic() / 2.5 - walldistance;
+                distance_off = rightdistancesensor.getDistance(DistanceUnit.INCH) - walldistance;
             }
 
             if (Math.abs(distance_off) >= 1.5 && gotocrater) {
@@ -779,87 +778,63 @@ abstract public class Nav_Routines extends LinearOpMode {
 
     }
 
-    public double turn_to_heading_tfod(double target_heading) {
-        boolean go_right;
-        double current_heading;
-        double degrees_to_turn;
-        double wheel_power;
-        double prevheading;
-        double angleGoldMineral = -500;
-        double goldMineralBottom = 0;
+    public boolean checktfod() {
+        boolean found;
+        int loopcount = 0;
 
-        DbgLog.msg("10435 starting TURN_TO_HEADING_tfod");
-        current_heading = currentheadingreading();
-        degrees_to_turn = Math.abs(target_heading - current_heading);
+        telemetry.update();  // clear out telemetry?
+        int closestmineral = 0;
+        double closestbottom = 0;
+        String closestlabel = "";
 
-        go_right = target_heading > current_heading;
-
-        if (degrees_to_turn > 180) {
-            go_right = !go_right;
-            degrees_to_turn = 360 - degrees_to_turn;
-        }
-
-        prevheading = current_heading;
-        while (degrees_to_turn > .5 && opModeIsActive() && angleGoldMineral == -500) {
+        while (opModeIsActive() && loopcount < 5) {
             if (tfod != null) {
                 List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
                 if (updatedRecognitions != null) {
                     if (updatedRecognitions.size() > 0) {
-                        goldMineralBottom = 0;
+                        telemetry.addData("# Objects Detected", updatedRecognitions.size());
+                        int mineralcounter;
+                        mineralcounter = 0;
+                        closestmineral = 0;
+                        closestbottom = 0;
+                        loopcount = loopcount + 1;
                         for (Recognition recognition : updatedRecognitions) {
-                            if (recognition.getLabel().equals("Gold Mineral") && recognition.getBottom() > ignorecrater && recognition.getBottom() > goldMineralBottom) {
-                                angleGoldMineral = current_heading + recognition.estimateAngleToObject(AngleUnit.DEGREES);
-                                angleGoldMineral = (angleGoldMineral + 360)%360;  // make sure it's not negative or higher than 360
-                                goldMineralBottom = recognition.getBottom();      // save the bottom edge of the closest mineral which is how many pixels the bottom of the mineral is from the top of the image - max 720
+                            mineralcounter = mineralcounter + 1;
+                            telemetry.addData("Mineral counter", mineralcounter);
+                            telemetry.addData("Label", recognition.getLabel());
+                            //telemetry.addData("Left", (int) recognition.getLeft());
+                            //telemetry.addData("Right", (int) recognition.getRight());
+                            telemetry.addData("Angle", recognition.estimateAngleToObject(AngleUnit.DEGREES));
+                            //telemetry.addData("Height", recognition.getHeight());
+                            telemetry.addData("Width", recognition.getWidth());
+                            telemetry.addData("Bottom", recognition.getBottom());
+                            //telemetry.addData("Top", recognition.getTop());
+                            if (loopcount > 2 && recognition.getBottom() > closestbottom) {
+                                closestbottom = recognition.getBottom();
+                                closestmineral = mineralcounter;
+                                closestlabel = recognition.getLabel();
                             }
+
                         }
+
                     }
                 }
             }
 
-            wheel_power = (2 * Math.pow((degrees_to_turn + 13) / 30, 2) + 15) / 100;
-
-            if (go_right) {
-                wheel_power = -wheel_power;
-            }
-
-            rightFront.setPower(wheel_power);
-            rightRear.setPower(wheel_power);
-            leftFront.setPower(-wheel_power);
-            leftRear.setPower(-wheel_power);
-
-            current_heading = currentheadingreading();
-
-            degrees_to_turn = Math.abs(target_heading - current_heading);       // Calculate how far is remaining to turn
-
-            go_right = target_heading > current_heading;
-
-            if (degrees_to_turn > 180) {
-                go_right = !go_right;
-                degrees_to_turn = 360 - degrees_to_turn;
-            }
-
-            if (Math.abs(current_heading - prevheading) > 1) {
-                prevheading = current_heading;
-            }
-
-            DbgLog.msg("10435 TURN_TO_HEADING_tfod" + " go right: " + go_right + " degrees to turn: " + degrees_to_turn + " wheel power: " + wheel_power + " current heading: " + current_heading + "Wheel power: " + Double.toString(wheel_power));
+            telemetry.addData("loopcount", loopcount);
+            telemetry.addData("Closest Mineral", closestmineral);
+            telemetry.addData("Closest Bottom", closestbottom);
+            telemetry.addData("Closest Label", closestlabel);
+            telemetry.update();
+            sleep(300);
         }
 
-        rightFront.setPower(0);
-        rightRear.setPower(0);
-        leftFront.setPower(0);
-        leftRear.setPower(0);
+        found = (closestbottom > 0 && closestlabel == "Gold Mineral");
+        telemetry.addData("Found", found);
 
-        if (angleGoldMineral !=500) {
-            if (turn_to_gold_tfod()) {
-                angleGoldMineral = currentheadingreading();
-            }
-        }
+        telemetry.update();
 
-        DbgLog.msg("10435 ending TURN_TO_HEADING_tfod" + Double.toString(target_heading) + "  Final heading:" + Double.toString(current_heading) + "  After set power 0:" + Double.toString(angles.firstAngle));
-
-        return angleGoldMineral;
+        return found;
     }
 
     public boolean turn_to_gold_tfod() {
@@ -903,83 +878,7 @@ abstract public class Nav_Routines extends LinearOpMode {
 
         DbgLog.msg("10435 ending TURN_TO_GOLD tfod" + Double.toString(angleGoldMineral) + "  Final heading:" + Double.toString(current_heading) + "  After set power 0:" + Double.toString(angles.firstAngle));
 
-        return (goldMineralBottom !=0);
-    }
-
-    public void go_sideways_tfod(double angledegrees, double heading, double power) {
-        double stickpower = power;
-        double angleradians;
-        double leftfrontpower;
-        double rightfrontpower;
-        double leftrearpower;
-        double rightrearpower;
-        double turningpower = 0;
-        boolean mineralclose = false;
-        double goldMineralBottom = 0;
-
-        // For the cos and sin calculations below in the mecanum power calcs, angleradians = 0 is straight to the right and 180 is straight to the left.
-        // Negative numbers up to -180 are backward.  Postive numbers up to 180 are forward.
-        // We subtract 90 from it then convert degrees to radians because *our* robot code thinks of 0 degrees as forward, 90 as right, 180 as backward, 270 as left.
-
-        // This converts from *our* degrees to radians used by the mecanum power calcs.
-        // Upper left quadrant (degrees > 270) is special because in that quadrant as our degrees goes up, radians goes down.
-        if (angledegrees < 270) {
-            angleradians = ((angledegrees - 90) * -1) * Math.PI / 180;
-        } else {
-            angleradians = (450 - angledegrees) * Math.PI / 180;
-        }
-
-        angleradians = angleradians - Math.PI / 4; //adjust by 45 degrees for the mecanum wheel calculations below
-
-
-
-        while (opModeIsActive() && !mineralclose) {
-            if (tfod != null) {
-                List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
-                if (updatedRecognitions != null) {
-                    telemetry.addData("# Object Detected", updatedRecognitions.size());
-                    if (updatedRecognitions.size() > 0) {
-                        goldMineralBottom = 0;
-                        for (Recognition recognition : updatedRecognitions) {
-                            if (recognition.getLabel().equals("Gold Mineral") && recognition.getBottom() > ignorecrater && recognition.getBottom() > goldMineralBottom) {
-                                goldMineralBottom = recognition.getBottom(); // save the bottom edge of the closest mineral which is how many pixels the bottom of the mineral is from the top of the image - max 720
-                                mineralclose = (goldMineralBottom >= 640);
-                            }
-                        }
-                    }
-                }
-                telemetry.addData("Gold Mineral Bottom", goldMineralBottom);
-                telemetry.update();
-            }
-
-            turningpower = -go_straight_adjustment(heading) * (power * 2);
-
-            leftfrontpower = stickpower * Math.cos(angleradians) + turningpower;
-            rightfrontpower = stickpower * Math.sin(angleradians) - turningpower;
-            leftrearpower = stickpower * Math.sin(angleradians) + turningpower;
-            rightrearpower = stickpower * Math.cos(angleradians) - turningpower;
-
-            leftFront.setPower(leftfrontpower);
-            rightFront.setPower(rightfrontpower);
-            leftRear.setPower(leftrearpower);
-            rightRear.setPower(rightrearpower);
-
-
-            DbgLog.msg("10435 inchesreadfromwall:"
-                    + " turningpower:" + Double.toString(turningpower)
-                    + " leftfrontpower" + Double.toString(leftfrontpower)
-                    + " rightfrontpower" + Double.toString(rightfrontpower)
-                    + " leftrearpower" + Double.toString(leftrearpower)
-                    + " rightrearpower" + Double.toString(rightrearpower)
-            );
-        }
-
-        leftFront.setPower(0);
-        rightFront.setPower(0);
-        leftRear.setPower(0);
-        rightRear.setPower(0);
-
-        sleep(50);
+        return (goldMineralBottom != 0);
     }
 
     private double getSpeed(double ticks_traveled) {

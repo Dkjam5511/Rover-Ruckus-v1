@@ -80,29 +80,41 @@ public class MineralDetectionTest extends LinearOpMode {
                 tfod.activate();
             }
 
+            int closestmineral = 0;
+            double closestbottom = 0;
+
             while (opModeIsActive()) {
                 if (tfod != null) {
                     List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
+                    telemetry.addData("# Objects Detected", updatedRecognitions.size());
                     if (updatedRecognitions != null) {
                         int loopcounter;
                         loopcounter = 0;
+                        closestmineral = 0;
+                        closestbottom = 0;
                         for (Recognition recognition : updatedRecognitions) {
                             loopcounter = loopcounter + 1;
-                            telemetry.addData("# Object Detected", updatedRecognitions.size());
                             telemetry.addData("Loop counter", loopcounter);
                             telemetry.addData("Label", recognition.getLabel());
-                            telemetry.addData("Left", (int) recognition.getLeft());
-                            telemetry.addData("Right", (int) recognition.getRight());
+                            //telemetry.addData("Left", (int) recognition.getLeft());
+                            //telemetry.addData("Right", (int) recognition.getRight());
                             telemetry.addData("Angle", recognition.estimateAngleToObject(AngleUnit.DEGREES));
-                            telemetry.addData("Height", recognition.getHeight());
+                            //telemetry.addData("Height", recognition.getHeight());
                             telemetry.addData("Width", recognition.getWidth());
                             telemetry.addData("Bottom", recognition.getBottom());
-                            telemetry.addData("Top", recognition.getTop());
-                            telemetry.update();
+                            //telemetry.addData("Top", recognition.getTop());
+                            if (recognition.getBottom() > closestbottom) {
+                                closestbottom = recognition.getBottom();
+                                closestmineral = loopcounter;
+                            }
+
                         }
 
                     }
                 }
+                telemetry.addData("Closest Mineral", closestmineral);
+                telemetry.update();
+                sleep(6000);
             }
         }
 
