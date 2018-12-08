@@ -26,6 +26,8 @@ public class TeleOp_10435 extends OpMode {
     int mil1startticks;
     int mil2startticks;
     int liftmotorstartticks;
+    int prevmil1ticks;
+    double mil1tickspersec;
     boolean autoliftmode = false;
     boolean dropliftmmode = false;
     boolean yispressed = false;
@@ -38,6 +40,8 @@ public class TeleOp_10435 extends OpMode {
     ElapsedTime mineralarmendgametimer = new ElapsedTime();
     ElapsedTime ytimer = new ElapsedTime();
     ElapsedTime xtimer = new ElapsedTime();
+    ElapsedTime prevtickstimer = new ElapsedTime();
+    ElapsedTime mil1tickpersectimer = new ElapsedTime();
 
     @Override
     public void init() {
@@ -160,7 +164,7 @@ public class TeleOp_10435 extends OpMode {
         int mil2ticks;
         int liftticks;
         int phase = 0;
-        double servoturnpos = .2;
+        double servoturnpos = .15; // the pos where the servo starts turning
         double mineralboxpos;
         double maxmil1ticks = 351;
         double droplevelticks = 80;
@@ -170,6 +174,13 @@ public class TeleOp_10435 extends OpMode {
         mil1ticks = mil1startticks - mil1.getCurrentPosition();
         mil2ticks = mil2startticks - mil2.getCurrentPosition();
         liftticks = liftmotorstartticks - liftmotor.getCurrentPosition();
+
+        if (mil1tickpersectimer.seconds() > .05) {
+            mil1tickspersec = (mil1ticks - prevmil1ticks) / mil1tickpersectimer.seconds();
+            mil1tickpersectimer.reset();
+        } else {
+            prevmil1ticks = mil1ticks;
+        }
 
         boxmil1ticks = mil1ticks;
 
@@ -189,7 +200,7 @@ public class TeleOp_10435 extends OpMode {
             mineralknockservo.setPosition(.8);
         }
 
-        if (gamepad1.b){
+        if (gamepad1.b) {
             mineralknockservo.setPosition(1);
         }
         if (gamepad2.x && xtimer.seconds() > .35) {
@@ -201,7 +212,7 @@ public class TeleOp_10435 extends OpMode {
         if (yispressed) {
             mineralboxpos = .5;
         } else if (xispressed) {
-            mineralboxpos = .35;
+            mineralboxpos = .34 ;
         } else {
             mineralboxpos = ((boxmil1ticks - droplevelticks) / tickstoturnbox) * (.5 - servoturnpos) + servoturnpos; // makes a range from .2 to .5
         }
@@ -216,17 +227,21 @@ public class TeleOp_10435 extends OpMode {
         if (gamepad2.b && mineralliftmodetimer.seconds() >= .35) {
             autoliftmode = !autoliftmode;
             dropliftmmode = false;
+            mineralarmendgame = false;
             mineralliftmodetimer.reset();
         }
 
         if (gamepad2.a && mineraldropmodetimer.seconds() >= .35) {
             dropliftmmode = !dropliftmmode;
             autoliftmode = false;
+            mineralarmendgame = false;
             mineraldropmodetimer.reset();
         }
 
         if (gamepad2.dpad_up && mineralarmendgametimer.seconds() >= .35) {
             mineralarmendgame = !mineralarmendgame;
+            dropliftmmode = false;
+            autoliftmode = false;
             mineralarmendgametimer.reset();
         }
 
@@ -241,23 +256,36 @@ public class TeleOp_10435 extends OpMode {
             }
 
             if (phase == 1) {
-                if (liftticks > 100) {
+                if (liftticks > 1000) {
                     liftmotor.setPower(1);
                 } else {
                     liftmotor.setPower(0);
                 }
-                mil1.setPower(.65);
-                mil2.setPower(.65);
+                if (mil1ticks > 260) {
+                    mil1.setPower(1);
+                    mil2.setPower(1);
+                } else {
+                    mil1.setPower(.65);
+                    mil2.setPower(.65);
+                }
             }
 
             if (phase == 2) {
-                if (liftticks > 100) {
+                if (liftticks > 1000) {
                     liftmotor.setPower(1);
                 } else {
                     liftmotor.setPower(0);
                 }
-                mil1.setPower(.3);
-                mil2.setPower(.3);
+                if (mil1ticks < 100 && mil1tickspersec < -2|| mil1ticks < droplevelticks) {
+                    mil1.setPower(0);
+                    mil2.setPower(0);
+                } else if (mil1ticks < 110) {
+                    mil1.setPower(.2);
+                    mil2.setPower(.2);
+                } else{
+                    mil1.setPower(.5);
+                    mil2.setPower(.5);
+                }
             }
 
             if (phase == 3) {
@@ -273,12 +301,31 @@ public class TeleOp_10435 extends OpMode {
                 }
             }
         } else if (dropliftmmode) {
-            if (mil1ticks < 150) {
-                mil1.setPower(-.4);
-                mil2.setPower(-.4);
-            } else if (mil1ticks < 250) {
+            if (mil1ticks < 120) {
+                mil1.setPower(-.65);
+                mil2.setPower(-.65);
+            } else if (mil1ticks < 160) {
                 mil1.setPower(-.2);
                 mil2.setPower(-.2);
+                if (liftticks > 1000) {
+                    liftmotor.setPower(1);
+                } else {
+                    liftmotor.setPower(0);
+                }
+            } else if (mil1ticks < 340) {
+                if (liftticks > 1000) {
+                    liftmotor.setPower(1);
+                } else {
+                    liftmotor.setPower(0);
+                }
+
+                if (mil1tickspersec > 80 && liftticks > 500) {
+                    mil1.setPower(0);
+                    mil2.setPower(0);
+                } else {
+                    mil1.setPower(-.2);
+                    mil2.setPower(-.2);
+                }
             } else {
                 mil1.setPower(0);
                 mil2.setPower(0);
@@ -288,11 +335,6 @@ public class TeleOp_10435 extends OpMode {
             yispressed = false;
             xispressed = false;
 
-            if (liftticks > 1500) {
-                liftmotor.setPower(1);
-            } else {
-                liftmotor.setPower(0);
-            }
 
         } else {
             if (gamepad2.right_stick_y <= 0 && mil1ticks > maxmil1ticks) {
@@ -329,7 +371,8 @@ public class TeleOp_10435 extends OpMode {
         telemetry.addData("Auto Lift Mode", autoliftmode);
         telemetry.addData("Box Pos", mineralboxpos);
         telemetry.addData("mineralarmendgame", mineralarmendgame);
-        telemetry.addData("mineralarmendgame",mineralarmendgametimer.seconds());
+        telemetry.addData("Ticks per Second", mil1tickspersec);
+        telemetry.addData("Prev mil1 Ticks", prevmil1ticks);
         telemetry.addData("Phase", phase);
         telemetry.update();
 

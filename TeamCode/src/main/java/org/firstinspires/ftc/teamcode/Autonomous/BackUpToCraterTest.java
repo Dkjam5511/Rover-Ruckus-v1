@@ -9,6 +9,6 @@ public class BackUpToCraterTest extends Nav_Routines {
     @Override
     public void runOpMode() throws InterruptedException {
         Nav_Init();
-        wallfollow(84, 0, -.35, 6, false,true);
+        wallfollow(84, 0, -.35, 6, false, false);
     }
 }
