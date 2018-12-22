@@ -33,6 +33,7 @@ abstract public class Nav_Routines extends LinearOpMode {
     DcMotor mil1;
     DcMotor mil2;
     Servo mineralknockservo;
+    Servo mineralslidesblockservo;
     DigitalChannel magneticlimitswitch;
     Rev2mDistanceSensor leftdistancesensor;
     Rev2mDistanceSensor frontdistancesensor;
@@ -57,6 +58,7 @@ abstract public class Nav_Routines extends LinearOpMode {
     int winchstartticks;
 
     VuforiaLocalizer vuforia;
+    VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters();
 
     TFObjectDetector tfod;
 
@@ -69,6 +71,7 @@ abstract public class Nav_Routines extends LinearOpMode {
         mil1 = hardwareMap.dcMotor.get("mil1");
         mil2 = hardwareMap.dcMotor.get("mil2");
         mineralknockservo = hardwareMap.servo.get("mks");
+        mineralslidesblockservo = hardwareMap.servo.get("msbs");
         frontdistancesensor = hardwareMap.get(Rev2mDistanceSensor.class, "fds");
         leftdistancesensor = hardwareMap.get(Rev2mDistanceSensor.class, "lds");
         rightdistancesensor = hardwareMap.get(Rev2mDistanceSensor.class, "rds");
@@ -109,6 +112,7 @@ abstract public class Nav_Routines extends LinearOpMode {
         rightdistancesensor.initialize();
 
         mineralknockservo.setPosition(1);
+        mineralslidesblockservo.setPosition(.5);
 
         BNO055IMU.Parameters IMUParameters = new BNO055IMU.Parameters();
         IMUParameters.angleUnit = BNO055IMU.AngleUnit.DEGREES;
@@ -117,8 +121,6 @@ abstract public class Nav_Routines extends LinearOpMode {
 
         imu = hardwareMap.get(BNO055IMU.class, "imu");
         imu.initialize(IMUParameters);
-
-        VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters();
 
         parameters.vuforiaLicenseKey = "AWaEPBn/////AAAAGWa1VK57tkUipP01PNk9ghlRuxjK1Oh1pmbHuRnpaJI0vi57dpbnIkpee7J1pQ2RIivfEFrobqblxS3dKUjRo52NMJab6Me2Yhz7ejs5SDn4G5dheW5enRNWmRBsL1n+9ica/nVjG8xvGc1bOBRsIeZyL3EZ2tKSJ407BRgMwNOmaLPBle1jxqAE+eLSoYsz/FuC1GD8c4S3luDm9Utsy/dM1W4dw0hDJFc+lve9tBKGBX0ggj6lpo9GUrTC8t19YJg58jsIXO/DiF09a5jlrTeB2LK+GndUDEGyZA1mS3yAR6aIBeDYnFw+79mVFIkTPk8wv3HIQfzoggCu0AwWJBVUVjkDxJOWfzCGjaHylZlo";
 
@@ -743,6 +745,12 @@ abstract public class Nav_Routines extends LinearOpMode {
 
     }
 
+    public void deploymarker2(){
+        mineralslidesblockservo.setPosition(.15);
+        sleep(1000);
+        mineralslidesblockservo.setPosition(.5);
+    }
+
     public boolean checktfod() {
         boolean found;
         int loopcount = 0;
@@ -802,6 +810,11 @@ abstract public class Nav_Routines extends LinearOpMode {
         return found;
     }
 
+    public void deactivateTfod(){
+        tfod.deactivate();
+        vuforia = null;
+    }
+
     private double getSpeed(double ticks_traveled) {
         double new_speed;
 
@@ -828,7 +841,7 @@ abstract public class Nav_Routines extends LinearOpMode {
     private boolean checkfrontdistancesensor() {
         boolean wallfound = false;
 
-        if (frontdistancesensor.getDistance(DistanceUnit.INCH) <= 28) {
+        if (frontdistancesensor.getDistance(DistanceUnit.INCH) <= 22) {
             wallfound = true;
         }
 

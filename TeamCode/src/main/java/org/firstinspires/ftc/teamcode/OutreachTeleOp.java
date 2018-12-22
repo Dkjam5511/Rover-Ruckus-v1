@@ -3,6 +3,8 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 @TeleOp (name = "Outreach TeleOp", group = "TeleOp")
 public class OutreachTeleOp extends OpMode {
@@ -10,6 +12,9 @@ public class OutreachTeleOp extends OpMode {
     DcMotor rightFront;
     DcMotor leftRear;
     DcMotor rightRear;
+    Servo mineralknockservo;
+
+    ElapsedTime mineralknocktimer = new ElapsedTime();
 
     @Override
     public void init() {
@@ -17,9 +22,12 @@ public class OutreachTeleOp extends OpMode {
         rightFront = hardwareMap.dcMotor.get("rf");
         leftRear = hardwareMap.dcMotor.get("lr");
         rightRear = hardwareMap.dcMotor.get("rr");
+        mineralknockservo = hardwareMap.servo.get("mks");
 
         rightFront.setDirection(DcMotor.Direction.REVERSE);
         rightRear.setDirection(DcMotor.Direction.REVERSE);
+
+        mineralknockservo.setPosition(1);
 
         leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -73,14 +81,23 @@ public class OutreachTeleOp extends OpMode {
         stickangleradians = stickangleradians - Math.PI / 4; //adjust by 45 degrees
 
         rightX = rightstickx * .5;
-        leftfrontpower = wheelpower * Math.cos(stickangleradians) + rightX;
-        rightfrontpower = wheelpower * Math.sin(stickangleradians) - rightX;
-        leftrearpower = wheelpower * Math.sin(stickangleradians) + rightX;
-        rightrearpower = wheelpower * Math.cos(stickangleradians) - rightX;
+        leftfrontpower = (wheelpower * Math.cos(stickangleradians) + rightX) / 2;
+        rightfrontpower = (wheelpower * Math.sin(stickangleradians) - rightX) / 2;
+        leftrearpower = (wheelpower * Math.sin(stickangleradians) + rightX) / 2;
+        rightrearpower = (wheelpower * Math.cos(stickangleradians) - rightX) / 2;
 
         leftFront.setPower(leftfrontpower);
         rightFront.setPower(rightfrontpower);
         leftRear.setPower(leftrearpower);
         rightRear.setPower(rightrearpower);
+
+        if (gamepad1.x){
+            mineralknocktimer.reset();
+            mineralknockservo.setPosition(.5);
+        }
+
+        if (mineralknocktimer.seconds() > 1){
+            mineralknockservo.setPosition(1);
+        }
     }
 }

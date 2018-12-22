@@ -36,22 +36,22 @@ public class TfodSilverAutonomous extends Nav_Routines {
         mineralknockservo.setPosition(1);
         go_sideways(270, 0, .3, 4);  // back out
 
-        tfod.deactivate();
+        deactivateTfod();
 
         go_forward(14 + (12 * leftcenterright), 0, .35, false);
 
         turn_to_heading(315);
-        go_sideways_to_wall(315, .5, 3, false);
+        go_sideways_to_wall(315, .5, 5, false);
         // go to depot
-        wallfollow(28, 315, .4, 3, false, false);
-        distancetraveledtodepot = wallfollow(14, 315, .2, 3, false, true);
+        wallfollow(28, 315, .4, 5, false, false);
+        distancetraveledtodepot = wallfollow(14, 315, .2, 5, false, true);
 
         //drop the marker
-        deploymarker();
+        deploymarker2();
 
         // go to crater
-        wallfollow(43 - distancetraveledtodepot, 315, -.4, 3, false, false);
-        go_forward(11, 315, -.4, true);
+        wallfollow(43 - distancetraveledtodepot, 315, -.4, 5, false, false);
+        go_forward(14, 315, -.4, true);
 
 
     }

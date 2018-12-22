@@ -36,7 +36,7 @@ public class TfodGoldAutonomous extends Nav_Routines {
         mineralknockservo.setPosition(1);
         go_sideways(270, 0, .3, 4);  // back out
 
-        tfod.deactivate();
+        deactivateTfod();
 
         go_forward(14 + (12 * leftcenterright), 0, .35, false);
 
@@ -47,11 +47,11 @@ public class TfodGoldAutonomous extends Nav_Routines {
         distancetraveledtodepot = wallfollow(14, 135, .4, 5, true, true);
 
         //drop the marker
-        deploymarker();
+        deploymarker2();
 
         // go to crater
         wallfollow(43 - distancetraveledtodepot, 135, -.4, 5, true, false);
-        go_forward(9, 135, -.4, true);
+        go_forward(14, 135, -.4, true);
 
 
     }
