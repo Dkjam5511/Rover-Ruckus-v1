@@ -12,9 +12,7 @@ public class OutreachTeleOp extends OpMode {
     DcMotor rightFront;
     DcMotor leftRear;
     DcMotor rightRear;
-    Servo mineralknockservo;
-
-    ElapsedTime mineralknocktimer = new ElapsedTime();
+    
 
     @Override
     public void init() {
@@ -22,12 +20,9 @@ public class OutreachTeleOp extends OpMode {
         rightFront = hardwareMap.dcMotor.get("rf");
         leftRear = hardwareMap.dcMotor.get("lr");
         rightRear = hardwareMap.dcMotor.get("rr");
-        mineralknockservo = hardwareMap.servo.get("mks");
 
         rightFront.setDirection(DcMotor.Direction.REVERSE);
         rightRear.setDirection(DcMotor.Direction.REVERSE);
-
-        mineralknockservo.setPosition(1);
 
         leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -91,13 +86,5 @@ public class OutreachTeleOp extends OpMode {
         leftRear.setPower(leftrearpower);
         rightRear.setPower(rightrearpower);
 
-        if (gamepad1.x){
-            mineralknocktimer.reset();
-            mineralknockservo.setPosition(.5);
-        }
-
-        if (mineralknocktimer.seconds() > 1){
-            mineralknockservo.setPosition(1);
-        }
     }
 }

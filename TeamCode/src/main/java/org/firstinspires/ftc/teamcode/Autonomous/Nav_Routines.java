@@ -1,13 +1,11 @@
 package org.firstinspires.ftc.teamcode.Autonomous;
 
+
 import com.qualcomm.hardware.bosch.BNO055IMU;
-import com.qualcomm.hardware.modernrobotics.ModernRoboticsI2cRangeSensor;
 import com.qualcomm.hardware.rev.Rev2mDistanceSensor;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DigitalChannel;
-import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -21,8 +19,11 @@ import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer;
 import org.firstinspires.ftc.robotcore.external.tfod.Recognition;
 import org.firstinspires.ftc.robotcore.external.tfod.TFObjectDetector;
 import org.firstinspires.ftc.teamcode.DbgLog;
+import org.firstinspires.ftc.teamcode.GlobalVariables;
 
 import java.util.List;
+
+import static org.firstinspires.ftc.teamcode.GlobalVariables.MAX_MIL1_TICKS;
 
 abstract public class Nav_Routines extends LinearOpMode {
     DcMotor leftFront;
@@ -32,11 +33,14 @@ abstract public class Nav_Routines extends LinearOpMode {
     DcMotor winchmotor;
     DcMotor mil1;
     DcMotor mil2;
-    Servo mineralknockservo;
+    DcMotor liftmotor;
     Servo mineralslidesblockservo;
+    Servo mineralboxservo;
+    Servo mineralintakeservo;
+    Servo markerknockservo;
     DigitalChannel magneticlimitswitch;
     Rev2mDistanceSensor leftdistancesensor;
-    Rev2mDistanceSensor frontdistancesensor;
+    Rev2mDistanceSensor backdistancesensor;
     Rev2mDistanceSensor rightdistancesensor;
     BNO055IMU imu;
     Orientation angles;
@@ -51,10 +55,10 @@ abstract public class Nav_Routines extends LinearOpMode {
     public double ticks_per_inch = wheel_encoder_ticks / (wheel_diameter * Math.PI);
 
     public double goforwardstopdetect = 2;
-    public int ignorecrater = 240;
 
     int mil1startticks;
     int mil2startticks;
+    int liftmotorstartticks;
     int winchstartticks;
 
     VuforiaLocalizer vuforia;
@@ -67,12 +71,15 @@ abstract public class Nav_Routines extends LinearOpMode {
         rightFront = hardwareMap.dcMotor.get("rf");
         leftRear = hardwareMap.dcMotor.get("lr");
         rightRear = hardwareMap.dcMotor.get("rr");
+        liftmotor = hardwareMap.dcMotor.get("lm");
         winchmotor = hardwareMap.dcMotor.get("wm");
         mil1 = hardwareMap.dcMotor.get("mil1");
         mil2 = hardwareMap.dcMotor.get("mil2");
-        mineralknockservo = hardwareMap.servo.get("mks");
         mineralslidesblockservo = hardwareMap.servo.get("msbs");
-        frontdistancesensor = hardwareMap.get(Rev2mDistanceSensor.class, "fds");
+        mineralboxservo = hardwareMap.servo.get("mbs");
+        mineralintakeservo = hardwareMap.servo.get("mis");
+        markerknockservo = hardwareMap.servo.get("mks");
+        backdistancesensor = hardwareMap.get(Rev2mDistanceSensor.class, "bds");
         leftdistancesensor = hardwareMap.get(Rev2mDistanceSensor.class, "lds");
         rightdistancesensor = hardwareMap.get(Rev2mDistanceSensor.class, "rds");
         magneticlimitswitch = hardwareMap.digitalChannel.get("mls");
@@ -80,10 +87,6 @@ abstract public class Nav_Routines extends LinearOpMode {
         rightFront.setDirection(DcMotor.Direction.REVERSE);
         rightRear.setDirection(DcMotor.Direction.REVERSE);
         winchmotor.setDirection(DcMotor.Direction.REVERSE);
-
-        mil1startticks = mil1.getCurrentPosition();
-        mil2startticks = mil2.getCurrentPosition();
-        winchstartticks = winchmotor.getCurrentPosition();
 
         leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -99,6 +102,7 @@ abstract public class Nav_Routines extends LinearOpMode {
         rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         mil1.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         mil2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        liftmotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
         leftFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         leftRear.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -106,13 +110,19 @@ abstract public class Nav_Routines extends LinearOpMode {
         rightRear.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         mil1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         mil2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        liftmotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        mil1startticks = mil1.getCurrentPosition();
+        mil2startticks = mil2.getCurrentPosition();
+        winchstartticks = winchmotor.getCurrentPosition();
+        liftmotorstartticks = liftmotor.getCurrentPosition();
 
         leftdistancesensor.initialize();
-        frontdistancesensor.initialize();
+        backdistancesensor.initialize();
         rightdistancesensor.initialize();
 
-        mineralknockservo.setPosition(1);
         mineralslidesblockservo.setPosition(.5);
+        markerknockservo.setPosition(1);
 
         BNO055IMU.Parameters IMUParameters = new BNO055IMU.Parameters();
         IMUParameters.angleUnit = BNO055IMU.AngleUnit.DEGREES;
@@ -294,8 +304,8 @@ abstract public class Nav_Routines extends LinearOpMode {
             highest_ticks_traveled_r = Math.max(ticks_traveled_r_Front, ticks_traveled_r_Rear);
             highest_ticks_traveled = Math.max(highest_ticks_traveled_l, highest_ticks_traveled_r);
 
-            if (gotocrater){
-                if (highest_ticks_traveled - lowest_ticks_traveled > 75){
+            if (gotocrater) {
+                if (highest_ticks_traveled - lowest_ticks_traveled > 75) {
                     craterhit = true;
                 }
             }
@@ -447,6 +457,7 @@ abstract public class Nav_Routines extends LinearOpMode {
     }
 
     public void go_sideways_to_wall(double heading, double power, double walldistance, boolean useleft) {
+        ElapsedTime runtime = new ElapsedTime();
         double stickpower = power;
         double angleradians = 90;
         double leftfrontpower;
@@ -459,6 +470,7 @@ abstract public class Nav_Routines extends LinearOpMode {
 
         if (useleft) {
             inchesreadfromwall = leftdistancesensor.getDistance(DistanceUnit.INCH);
+
         } else {
             inchesreadfromwall = rightdistancesensor.getDistance(DistanceUnit.INCH);
         }
@@ -477,7 +489,7 @@ abstract public class Nav_Routines extends LinearOpMode {
                 + " useleft:" + Boolean.toString(useleft)
         );
 
-        while (opModeIsActive() && Math.abs(inchesreadfromwall - walldistance) > 1) {
+        while (opModeIsActive() && Math.abs(inchesreadfromwall - walldistance) > 1 && runtime.seconds() < 4) {
 
             if (useleft) {
                 inchesreadfromwall = leftdistancesensor.getDistance(DistanceUnit.INCH);
@@ -598,7 +610,7 @@ abstract public class Nav_Routines extends LinearOpMode {
         while (opModeIsActive() && !destination_reached && timeouttimer.seconds() < goforwardstopdetect && !wallfound) {
 
             if (finddepot) {
-                wallfound = checkfrontdistancesensor();
+                wallfound = checkbackdistancesensor();
             }
 
             if (left) {
@@ -607,8 +619,8 @@ abstract public class Nav_Routines extends LinearOpMode {
                 distance_off = rightdistancesensor.getDistance(DistanceUnit.INCH) - walldistance;
             }
 
-            if (Math.abs(distance_off) >= 1.5) {
-                go_sideways_to_wall(heading, .25, walldistance, left);
+            if (Math.abs(distance_off) >= 1.5 && distance_off < 300) {
+                go_sideways_to_wall(heading, .4, walldistance, left);
             }
 
             current_speed = current_speed + speed_increase;  // this is to slowly ramp up the speed so we don't slip
@@ -689,7 +701,7 @@ abstract public class Nav_Routines extends LinearOpMode {
         int winchticks;
 
         winchticks = winchmotor.getCurrentPosition() - winchstartticks;
-        while (winchticks > 200) {
+        while (winchticks > 2000) {
             winchticks = winchmotor.getCurrentPosition() - winchstartticks;
             winchmotor.setPower(-1);
         }
@@ -709,46 +721,311 @@ abstract public class Nav_Routines extends LinearOpMode {
         }
     }
 
-    public void deploymarker() {
-        int mil1ticks;
-        boolean liftisout = false;
-
-        while (!liftisout && opModeIsActive()) {
-            mil1ticks = mil1startticks - mil1.getCurrentPosition();
-            if (mil1ticks < 180) {
-                mil1.setPower(-.4);
-                mil2.setPower(-.4);
-            } else {
-                mil1.setPower(0);
-                mil2.setPower(0);
-                liftisout = true;
-            }
-            telemetry.addData("Mil1Ticks", mil1ticks);
-            telemetry.update();
-        }
-
-        boolean liftisback = false;
-
-        while (!liftisback && opModeIsActive()) {
-            mil1ticks = mil1startticks - mil1.getCurrentPosition();
-            if (mil1ticks > 30) {
-                mil1.setPower(.4);
-                mil2.setPower(.4);
-            } else {
-                mil1.setPower(0);
-                mil2.setPower(0);
-                liftisback = true;
-            }
-            telemetry.addData("Mil1Ticks", mil1ticks);
-            telemetry.update();
-        }
-
+    public void deploymarker2() {
+        markerknockservo.setPosition(0);
+        sleep(500);
     }
 
-    public void deploymarker2(){
-        mineralslidesblockservo.setPosition(.15);
+    public void deploymineralarm(boolean scoopbox) {
+        int mil1ticks;
+        int liftticks;
+        double mil1tickspersec = 0;
+        int prevmil1ticks = 0;
+        double boxmil1ticks;
+        double mineralboxpos;
+        final double maxmil1ticks = GlobalVariables.MAX_MIL1_TICKS;
+        final double servoturnpos = .20; // the pos where the servo starts turning
+        final double droplevelticks = 90;
+        final double tickstoturnbox = maxmil1ticks - droplevelticks;
+
+        ElapsedTime mil1tickpersectimer = new ElapsedTime();
+        boolean deploying = true;
+
+        while (deploying && opModeIsActive()) {
+            mil1ticks = mil1startticks - mil1.getCurrentPosition();
+            liftticks = liftmotorstartticks - liftmotor.getCurrentPosition();
+
+            boxmil1ticks = mil1ticks;
+            if (boxmil1ticks > droplevelticks + tickstoturnbox) {   // set the max for boxmilticks
+                boxmil1ticks = droplevelticks + tickstoturnbox;
+            }
+            if (boxmil1ticks < droplevelticks) {                     // set the min for boxmilticks
+                boxmil1ticks = droplevelticks;
+            }
+            if (scoopbox) {
+                if (mil1ticks > 440) {
+                    mineralboxpos = ((boxmil1ticks - droplevelticks) / tickstoturnbox) * (GlobalVariables.MINERAL_BOX_GROUND_LEVEL - servoturnpos) + servoturnpos;
+                } else {
+                    mineralboxpos = 0;
+                }
+            } else {
+                mineralboxpos = ((boxmil1ticks - droplevelticks) / tickstoturnbox) * (GlobalVariables.MINERAL_BOX_GROUND_LEVEL - servoturnpos) + servoturnpos;
+            }
+            mineralboxservo.setPosition(mineralboxpos);
+
+            if (mil1ticks > 300) {
+                mineralslidesblockservo.setPosition(.97);
+            }
+
+            if (mil1tickpersectimer.seconds() > .05) {
+                mil1tickspersec = (mil1ticks - prevmil1ticks) / mil1tickpersectimer.seconds();
+                mil1tickpersectimer.reset();
+            } else {
+                prevmil1ticks = mil1ticks;
+            }
+
+            if (mil1ticks < 120) {
+                mil1.setPower(-.9);
+                mil2.setPower(-.9);
+            } else if (mil1ticks < 375) {
+                mil1.setPower(-.4);
+                mil2.setPower(-.4);
+                if (liftticks > 1000) {
+                    liftmotor.setPower(1);
+                } else {
+                    liftmotor.setPower(0);
+                }
+            } else if (mil1ticks < 460) {
+                if (liftticks > 1000) {
+                    liftmotor.setPower(1);
+                } else {
+                    liftmotor.setPower(0);
+                }
+                if (mil1tickspersec > 1100 && liftticks > 500) {
+                    mil1.setPower(0);
+                    mil2.setPower(0);
+                } else {
+                    mil1.setPower(-.2);
+                    mil2.setPower(-.2);
+                }
+            } else {
+                mil1.setPower(0);
+                mil2.setPower(0);
+                deploying = false;
+            }
+        }
+    }
+
+    public void raisemineralarm() {
+        int mil1ticks;
+        int liftticks;
+        int phase;
+        double boxmil1ticks;
+        double mineralboxpos;
+        final double servoturnpos = .20; // the pos where the servo starts turning
+        final double maxmil1ticks = GlobalVariables.MAX_MIL1_TICKS;
+        final double droplevelticks = 90;
+        final double liftdropticks = 3200;
+        final double tickstoturnbox = maxmil1ticks - droplevelticks;
+        boolean raising = true;
+
+        while (raising && opModeIsActive()) {
+            mil1ticks = mil1startticks - mil1.getCurrentPosition();
+            liftticks = liftmotorstartticks - liftmotor.getCurrentPosition();
+
+            boxmil1ticks = mil1ticks;
+            if (boxmil1ticks > droplevelticks + tickstoturnbox) {   // set the max for boxmilticks
+                boxmil1ticks = droplevelticks + tickstoturnbox;
+            }
+            if (boxmil1ticks < droplevelticks) {                     // set the min for boxmilticks
+                boxmil1ticks = droplevelticks;
+            }
+
+            mineralboxpos = ((boxmil1ticks - droplevelticks) / tickstoturnbox) * (GlobalVariables.MINERAL_BOX_GROUND_LEVEL - servoturnpos) + servoturnpos;
+            mineralboxservo.setPosition(mineralboxpos);
+
+            if (mil1ticks > 200) {
+                phase = 1;
+            } else if (mil1ticks > droplevelticks) {
+                phase = 2;
+            } else {
+                phase = 3;
+            }
+
+            if (phase == 1) {
+                if (liftticks > 1000) {
+                    liftmotor.setPower(1);
+                } else {
+                    liftmotor.setPower(0);
+                }
+                if (mil1ticks > 300) {
+                    mil1.setPower(1);
+                    mil2.setPower(1);
+                } else {
+                    mil1.setPower(.65);
+                    mil2.setPower(.65);
+                }
+            }
+
+            if (phase == 2) {
+                if (liftticks < liftdropticks) {
+                    liftmotor.setPower(-1);
+                } else {
+                    liftmotor.setPower(0);
+                }
+                if (mil1ticks > 120) {
+                    mil1.setPower(.3);
+                    mil2.setPower(.3);
+                } else {
+                    mil1.setPower(.1);
+                    mil2.setPower(.1);
+                }
+            }
+
+            if (phase == 3) {
+                mil1.setPower(0);
+                mil2.setPower(0);
+                if (liftticks < liftdropticks) {
+                    liftmotor.setPower(-1);
+                } else {
+                    liftmotor.setPower(0);
+                    raising = false;
+                }
+            }
+        }
+    }
+
+    public void retractmineralarm() {
+        int liftticks;
+        boolean lowering = true;
+
+        while (lowering && opModeIsActive()) {
+            liftticks = liftmotorstartticks - liftmotor.getCurrentPosition();
+            if (liftticks > 200) {
+                liftmotor.setPower(1);
+            } else {
+                liftmotor.setPower(0);
+                lowering = false;
+            }
+        }
+    }
+
+    public void gosidewaysretract(double angledegrees, double heading, double power, double inches) {
+        DbgLog.msg("10435 Starting go_sideways retract"
+                + " angledegrees:" + Double.toString(angledegrees)
+                + " heading:" + Double.toString(heading)
+                + " power:" + Double.toString(power)
+                + " inches:" + Double.toString(inches)
+        );
+        int liftticks;
+        double stickpower = power;
+        double angleradians;
+        double leftfrontpower;
+        double rightfrontpower;
+        double leftrearpower;
+        double rightrearpower;
+        double turningpower = 0;
+        boolean mineralclose = false;
+        boolean destinationreached = false;
+        final double ticksperinch = 47;
+        int ticks_to_travel;
+        int start_position_l_Front;
+        int start_position_l_Rear;
+        int start_position_r_Front;
+        int start_position_r_Rear;
+        int ticks_traveled_l_Front;
+        int ticks_traveled_l_Rear;
+        int ticks_traveled_r_Front;
+        int ticks_traveled_r_Rear;
+        int highest_ticks_traveled_l;
+        int highest_ticks_traveled_r;
+        int highest_ticks_traveled = 0;
+
+        start_position_l_Front = leftFront.getCurrentPosition();
+        start_position_l_Rear = leftRear.getCurrentPosition();
+        start_position_r_Front = rightFront.getCurrentPosition();
+        start_position_r_Rear = rightRear.getCurrentPosition();
+
+        ticks_to_travel = (int) (inches * ticksperinch);
+
+        // For the cos and sin calculations below in the mecanum power calcs, angleradians = 0 is straight to the right and 180 is straight to the left.
+        // Negative numbers up to -180 are backward.  Postive numbers up to 180 are forward.
+        // We subtract 90 from it then convert degrees to radians because *our* robot code thinks of 0 degrees as forward, 90 as right, 180 as backward, 270 as left.
+
+        // This converts from *our* degrees to radians used by the mecanum power calcs.
+        // Upper left quadrant (degrees > 270) is special because in that quadrant as our degrees goes up, radians goes down.
+        if (angledegrees < 270) {
+            angleradians = ((angledegrees - 90) * -1) * Math.PI / 180;
+        } else {
+            angleradians = (450 - angledegrees) * Math.PI / 180;
+        }
+
+        angleradians = angleradians - Math.PI / 4; //adjust by 45 degrees for the mecanum wheel calculations below
+
+        while (opModeIsActive() && !mineralclose && !destinationreached) {
+
+            liftticks = liftmotorstartticks - liftmotor.getCurrentPosition();
+            if (liftticks > 200) {
+                liftmotor.setPower(1);
+            } else {
+                liftmotor.setPower(0);
+            }
+
+            ticks_traveled_l_Front = Math.abs(leftFront.getCurrentPosition() - start_position_l_Front);
+            ticks_traveled_l_Rear = Math.abs(leftRear.getCurrentPosition() - start_position_l_Rear);
+            ticks_traveled_r_Front = Math.abs(rightFront.getCurrentPosition() - start_position_r_Front);
+            ticks_traveled_r_Rear = Math.abs(rightRear.getCurrentPosition() - start_position_r_Rear);
+
+            // of the 4 wheels, determines highest ticks traveled
+            highest_ticks_traveled_l = Math.max(ticks_traveled_l_Front, ticks_traveled_l_Rear);
+            highest_ticks_traveled_r = Math.max(ticks_traveled_r_Front, ticks_traveled_r_Rear);
+            highest_ticks_traveled = Math.max(highest_ticks_traveled_l, highest_ticks_traveled_r);
+
+
+            if (highest_ticks_traveled >= ticks_to_travel) {
+                destinationreached = true;
+            }
+
+            turningpower = -go_straight_adjustment(heading) * (power * 2);
+
+            leftfrontpower = stickpower * Math.cos(angleradians) + turningpower;
+            rightfrontpower = stickpower * Math.sin(angleradians) - turningpower;
+            leftrearpower = stickpower * Math.sin(angleradians) + turningpower;
+            rightrearpower = stickpower * Math.cos(angleradians) - turningpower;
+
+
+            leftFront.setPower(leftfrontpower);
+            rightFront.setPower(rightfrontpower);
+            leftRear.setPower(leftrearpower);
+            rightRear.setPower(rightrearpower);
+
+            DbgLog.msg("10435 go_sideways"
+                    + " turningpower:" + Double.toString(turningpower)
+                    + " leftfrontpower" + Double.toString(leftfrontpower)
+                    + " rightfrontpower" + Double.toString(rightfrontpower)
+                    + " leftrearpower" + Double.toString(leftrearpower)
+                    + " rightrearpower" + Double.toString(rightrearpower)
+            );
+        }
+
+        leftFront.setPower(0);
+        rightFront.setPower(0);
+        leftRear.setPower(0);
+        rightRear.setPower(0);
+        liftmotor.setPower(0);
+
+        sleep(50);
+    }
+
+    public void extendmienralarm() {
+        int liftticks;
+        boolean extending = true;
+
+        while (extending && opModeIsActive()) {
+            liftticks = liftmotorstartticks - liftmotor.getCurrentPosition();
+            if (liftticks < 2000) {
+                liftmotor.setPower(-1);
+            } else {
+                liftmotor.setPower(0);
+                extending = false;
+            }
+        }
+        liftmotor.setPower(0);
+    }
+
+    public void dumpmineral() {
+        mineralboxservo.setPosition(GlobalVariables.MINERAL_BOX_FULL_DROP);
         sleep(1000);
-        mineralslidesblockservo.setPosition(.5);
     }
 
     public boolean checktfod() {
@@ -775,13 +1052,9 @@ abstract public class Nav_Routines extends LinearOpMode {
                             mineralcounter = mineralcounter + 1;
                             telemetry.addData("Mineral counter", mineralcounter);
                             telemetry.addData("Label", recognition.getLabel());
-                            //telemetry.addData("Left", (int) recognition.getLeft());
-                            //telemetry.addData("Right", (int) recognition.getRight());
                             telemetry.addData("Angle", recognition.estimateAngleToObject(AngleUnit.DEGREES));
-                            //telemetry.addData("Height", recognition.getHeight());
                             telemetry.addData("Width", recognition.getWidth());
                             telemetry.addData("Bottom", recognition.getBottom());
-                            //telemetry.addData("Top", recognition.getTop());
                             if (loopcount > 2 && recognition.getBottom() > closestbottom) {
                                 closestbottom = recognition.getBottom();
                                 closestmineral = mineralcounter;
@@ -810,7 +1083,141 @@ abstract public class Nav_Routines extends LinearOpMode {
         return found;
     }
 
-    public void deactivateTfod(){
+    public int checktfod2() {
+        int LCR = 1;  // 1=left 2=center 3=right
+        int loopcount = 0;
+
+        telemetry.update();  // clear out telemetry?
+        int closestmineral1 = 0;
+        int closestmineral2 = 0;
+        double closestbottom1 = 0;
+        double closestbottom2 = 0;
+        String closestlabel1 = "";
+        String closestlabel2 = "";
+        double closestLeft1 = 0;
+        double closestLeft2 = 0;
+
+        ElapsedTime loopruntime = new ElapsedTime();
+        while (opModeIsActive() && loopcount < 5 && loopruntime.seconds() < 3) {
+            if (tfod != null) {
+                List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
+                if (updatedRecognitions != null) {
+                    if (updatedRecognitions.size() >= 2) {
+                        telemetry.addData("# Objects Detected", updatedRecognitions.size());
+                        int mineralcounter;
+                        mineralcounter = 0;
+                        closestmineral1 = 0;
+                        closestmineral2 = 0;
+                        closestbottom1 = 0;
+                        closestbottom2 = 0;
+                        closestLeft1 = 0;
+                        closestLeft2 = 0;
+                        loopcount = loopcount + 1;
+                        for (Recognition recognition : updatedRecognitions) {
+                            mineralcounter = mineralcounter + 1;
+                            DbgLog.msg(mineralcounter + " Bottom: " + recognition.getBottom()
+                                    + " Label: " + recognition.getLabel()
+                                    + " Left: " + recognition.getLeft()
+                                    + " Width: " + recognition.getWidth()
+                                    + " Height: " + recognition.getHeight()
+                                    + " Angle: " + recognition.estimateAngleToObject(AngleUnit.DEGREES)
+                            );
+                            if (loopcount > 2) {
+                                if (recognition.getBottom() > closestbottom1) { // We actually want the closest to the bottom. But bottom gets us distance from the top so bigger is closer.
+                                    closestbottom2 = closestbottom1; // Move the smazller one to 2 so we keep 1 as the largest number (closest)
+                                    closestmineral2 = closestmineral1;
+                                    closestlabel2 = closestlabel1;
+                                    closestLeft2 = closestLeft1;
+                                    closestbottom1 = recognition.getBottom();
+                                    closestmineral1 = mineralcounter;
+                                    closestlabel1 = recognition.getLabel();
+                                    closestLeft1 = recognition.getLeft();
+                                } else if (recognition.getBottom() > closestbottom2) {
+                                    closestbottom2 = recognition.getBottom();
+                                    closestmineral2 = mineralcounter;
+                                    closestlabel2 = recognition.getLabel();
+                                    closestLeft2 = recognition.getLeft();
+                                }
+                            }
+                        }
+
+                    }
+                }
+            }
+
+            telemetry.addData("loopcount", loopcount);
+            telemetry.addData("Closest Mineral 1", closestmineral1);
+            telemetry.addData("Closest Mineral 2", closestmineral2);
+            telemetry.addData("Closest Bottom 1", closestbottom1);
+            telemetry.addData("Closest Bottom 2", closestbottom2);
+            telemetry.addData("Closest Label 1", closestlabel1);
+            telemetry.addData("Closest Label 2", closestlabel2);
+            telemetry.addData("Closest Left 1", closestLeft1);
+            telemetry.addData("Closest Left 2", closestLeft2);
+            telemetry.update();
+            sleep(100); //This is to slow down the reads
+        }
+
+        if (Math.abs(closestbottom1 - closestbottom2) > 70){ //Throw out minerals that are too far back
+            if (closestbottom1 < closestbottom2){
+                closestbottom1 = 0;
+                DbgLog.msg("10435 Throwing out Mineral 1");
+            } else {
+                closestbottom2 = 0;
+                DbgLog.msg("10435 Throwing out Mineral 2");
+            }
+        }
+
+        if (closestbottom1 != 0 && closestlabel1 == "Gold Mineral"){
+            if (closestLeft1 > 250){
+                LCR = 3;
+            } else { 
+                LCR = 2;
+            }
+        } else if (closestbottom2 != 0 && closestlabel2 == "Gold Mineral"){
+            if (closestLeft2 > 250){
+                LCR = 3;
+            } else {
+                LCR = 2;
+            }
+        } else {
+            LCR = 1;
+        }
+
+        /*
+        if (closestbottom1 != 0 && closestbottom2 != 0) {
+            if (closestlabel1 == "Silver Mineral" && closestlabel2 == "Silver Mineral") {
+                LCR = 1;
+            } else {
+                if (closestLeft1 < closestLeft2 && closestlabel1 == "Gold Mineral" || closestLeft2 < closestLeft1 && closestlabel2 == "Gold Mineral") { //If the closest left mineral is gold then set LCR to left
+                    LCR = 2;
+                } else {
+                    LCR = 3;
+                }
+            }
+        }
+*/
+
+        DbgLog.msg("Found: " + LCR
+                + " loopcount: " + loopcount
+                + " Closest Mineral 1: " + closestmineral1
+                + " Closest Mineral 2: " + closestmineral2
+                + " Closest Bottom 1: " + closestbottom1
+                + " Closest Bottom 2: " + closestbottom2
+                + " Closest Label 1: " + closestlabel1
+                + " Closest Label 2: " + closestlabel2
+                + " Closest Left 1: " + closestLeft1
+                + " Closest Left 2: " + closestLeft2
+        );
+        telemetry.addData("Found: ", LCR);
+
+        telemetry.update();
+
+        return LCR;
+
+    }
+
+    public void deactivateTfod() {
         tfod.deactivate();
         vuforia = null;
     }
@@ -838,10 +1245,10 @@ abstract public class Nav_Routines extends LinearOpMode {
         return new_speed;
     }
 
-    private boolean checkfrontdistancesensor() {
+    private boolean checkbackdistancesensor() {
         boolean wallfound = false;
 
-        if (frontdistancesensor.getDistance(DistanceUnit.INCH) <= 22) {
+        if (backdistancesensor.getDistance(DistanceUnit.INCH) <= 22) {
             wallfound = true;
         }
 
@@ -883,7 +1290,7 @@ abstract public class Nav_Routines extends LinearOpMode {
 
         return gs_adjustment;
 
-    } // end of go_straight_adjustment
+    }
 
     private double currentheadingreading() {
         double current_heading;
@@ -895,8 +1302,6 @@ abstract public class Nav_Routines extends LinearOpMode {
         } else {
             current_heading = 360 - current_heading;
         }
-
-        current_heading = shiftheading(current_heading);
 
         return current_heading;
     }

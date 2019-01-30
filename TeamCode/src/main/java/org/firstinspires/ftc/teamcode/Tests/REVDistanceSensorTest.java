@@ -14,19 +14,19 @@ public class REVDistanceSensorTest extends OpMode {
 
     Rev2mDistanceSensor leftdistancesensor;
     Rev2mDistanceSensor rightdistancesensor;
-    Rev2mDistanceSensor frontdistancesensor;
+    Rev2mDistanceSensor backdistancesensor;
 
     @Override
     public void init() {
         leftdistancesensor = hardwareMap.get(Rev2mDistanceSensor.class, "lds");
         rightdistancesensor = hardwareMap.get(Rev2mDistanceSensor.class, "rds");
-        frontdistancesensor = hardwareMap.get(Rev2mDistanceSensor.class, "fds");
+        backdistancesensor = hardwareMap.get(Rev2mDistanceSensor.class, "bds");
     }
     @Override
     public void loop() {
         telemetry.addData("Distance Left: ", leftdistancesensor.getDistance(DistanceUnit.INCH));
         telemetry.addData("Distance Right: ", rightdistancesensor.getDistance(DistanceUnit.INCH));
-        telemetry.addData("Distance Front: ", frontdistancesensor.getDistance(DistanceUnit.INCH));
+        telemetry.addData("Distance Back: ", backdistancesensor.getDistance(DistanceUnit.INCH));
 
 
 

@@ -31,9 +31,7 @@ public class TfodGoldAutonomous extends Nav_Routines {
         }
 
         go_sideways(90, 0, .3, 5);  // Knock off the mineral
-        mineralknockservo.setPosition(.5);
         sleep(500);
-        mineralknockservo.setPosition(1);
         go_sideways(270, 0, .3, 4);  // back out
 
         deactivateTfod();
