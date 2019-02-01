@@ -1171,7 +1171,7 @@ abstract public class Nav_Routines extends LinearOpMode {
         if (closestbottom1 != 0 && closestlabel1 == "Gold Mineral"){
             if (closestLeft1 > 250){
                 LCR = 3;
-            } else { 
+            } else {
                 LCR = 2;
             }
         } else if (closestbottom2 != 0 && closestlabel2 == "Gold Mineral"){

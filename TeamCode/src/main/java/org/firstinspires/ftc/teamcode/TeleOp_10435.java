@@ -356,10 +356,10 @@ public class TeleOp_10435 extends OpMode {
             xispressed = false;
 
         } else {
-            if (gamepad2.right_stick_y <= 0 && mil1ticks > maxmil1ticks) {
+            /* if (gamepad2.right_stick_y <= 0 && mil1ticks > maxmil1ticks) {
                 mil1.setPower(.3);
                 mil2.setPower(.3);
-            } else {
+            } else */{
                 mil1.setPower(gamepad2.right_stick_y);
                 mil2.setPower(gamepad2.right_stick_y);
             }
