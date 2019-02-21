@@ -1,8 +1,9 @@
 package org.firstinspires.ftc.teamcode.Autonomous;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 
-@Autonomous(name = "Tfod Silver Autonomous", group = "TfodAutonomous")
+@Disabled//(name = "Tfod Silver Autonomous", group = "TfodAutonomous")
 public class TfodSilverAutonomous extends Nav_Routines {
 
     boolean goldfound = false;

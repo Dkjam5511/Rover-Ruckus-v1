@@ -29,7 +29,8 @@ public class TfodGoldAutonomousFlex extends Nav_Routines {
         }
         turn_to_heading(mineralheading);
         mineralintakeservo.setPosition(0);
-        deploymineralarm(false);
+        deploymineralarm();
+        extendmienralarm();
         go_forward(mineraldistance, mineralheading, .3,false);
         raisemineralarm();
         go_forward(mineraldistance + 3, mineralheading, -.3, false);
@@ -40,18 +41,19 @@ public class TfodGoldAutonomousFlex extends Nav_Routines {
         gosidewaysretract(270,0, .55, 30);
         turn_to_heading(225);
         // go to depot
-        wallfollow(20, 225, -.45, 5, false, false);
-        distancetraveledtodepot = wallfollow(14, 225, -.35, 5, false, true);
+        go_sideways_to_wall(225,.45,3.5, false);
+        wallfollow(20, 225, -.45, 3.5, false, false);
+        distancetraveledtodepot = wallfollow(14, 225, -.35, 3.5, false, true);
 
         //drop the marker
         deploymarker2();
 
         // go to crater
-        wallfollow(43 - distancetraveledtodepot, 225, .45, 5, false, false);
+        wallfollow(43 - distancetraveledtodepot, 225, .45, 3.5, false, false);
         go_forward(14, 225, .4, true);
 
         mineralintakeservo.setPosition(0);
-        deploymineralarm(true);
+        deploymineralarm();
         extendmienralarm();
     }
 }

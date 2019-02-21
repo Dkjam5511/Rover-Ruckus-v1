@@ -143,6 +143,7 @@ abstract public class Nav_Routines extends LinearOpMode {
             int tfodMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
                     "tfodMonitorViewId", "id", hardwareMap.appContext.getPackageName());
             TFObjectDetector.Parameters tfodParameters = new TFObjectDetector.Parameters(tfodMonitorViewId);
+            tfodParameters.minimumConfidence = .5;
             tfod = ClassFactory.getInstance().createTFObjectDetector(tfodParameters, vuforia);
             tfod.loadModelFromAsset("RoverRuckus.tflite", "Gold Mineral", "Silver Mineral");
         } else {
@@ -581,10 +582,11 @@ abstract public class Nav_Routines extends LinearOpMode {
         double remaining_inches;
         double previous_log_timer = 0;
         double power_adjustment;
-        double distance_off;
+        double distance_off = 0;
         boolean wallfound = false;
 
         ElapsedTime timeouttimer = new ElapsedTime();
+        ElapsedTime distanceSensorTimer = new ElapsedTime();
 
         if (speed < 0) {
             inches_to_travel = inches_to_travel * 1.08;
@@ -619,10 +621,12 @@ abstract public class Nav_Routines extends LinearOpMode {
                 distance_off = rightdistancesensor.getDistance(DistanceUnit.INCH) - walldistance;
             }
 
-            if (Math.abs(distance_off) >= 1.5 && distance_off < 300) {
-                go_sideways_to_wall(heading, .4, walldistance, left);
+            if (distanceSensorTimer.seconds() > 1) {
+                if (Math.abs(distance_off) >= 1.5 && distance_off < 300) {
+                    go_sideways_to_wall(heading, .4, walldistance, left);
+                }
+                distanceSensorTimer.reset();
             }
-
             current_speed = current_speed + speed_increase;  // this is to slowly ramp up the speed so we don't slip
             if (Math.abs(current_speed) > Math.abs(speed)) {
                 current_speed = speed;
@@ -660,7 +664,7 @@ abstract public class Nav_Routines extends LinearOpMode {
 
             if (lowest_ticks_traveled_l != previous_ticks_traveled_L && log_timer.seconds() - previous_log_timer > .1) {
                 DbgLog.msg("10435 WALLFOLLOW ticks_traveled: L:" + Double.toString(lowest_ticks_traveled_l)
-                        + " R:" + Double.toString(lowest_ticks_traveled_r) + " actual_speed:" + actual_speed + " current speed:" + current_speed + " speed:" + speed);
+                        + " R:" + Double.toString(lowest_ticks_traveled_r) + " actual_speed:" + actual_speed + " current speed:" + current_speed + " speed:" + speed + "Distance Off: " + distance_off);
                 previous_log_timer = log_timer.seconds();
                 previous_ticks_traveled_L = lowest_ticks_traveled_l;
             }
@@ -726,7 +730,7 @@ abstract public class Nav_Routines extends LinearOpMode {
         sleep(500);
     }
 
-    public void deploymineralarm(boolean scoopbox) {
+    public void deploymineralarm() {
         int mil1ticks;
         int liftticks;
         double mil1tickspersec = 0;
@@ -735,8 +739,11 @@ abstract public class Nav_Routines extends LinearOpMode {
         double mineralboxpos;
         final double maxmil1ticks = GlobalVariables.MAX_MIL1_TICKS;
         final double servoturnpos = .20; // the pos where the servo starts turning
-        final double droplevelticks = 90;
+        final double droplevelticks = 70;
+        final double liftdropticks = 1075;
+        final double liftlowerticks = liftdropticks / 4;
         final double tickstoturnbox = maxmil1ticks - droplevelticks;
+        boolean scoopcomplete = false;
 
         ElapsedTime mil1tickpersectimer = new ElapsedTime();
         boolean deploying = true;
@@ -752,19 +759,17 @@ abstract public class Nav_Routines extends LinearOpMode {
             if (boxmil1ticks < droplevelticks) {                     // set the min for boxmilticks
                 boxmil1ticks = droplevelticks;
             }
-            if (scoopbox) {
-                if (mil1ticks > 440) {
-                    mineralboxpos = ((boxmil1ticks - droplevelticks) / tickstoturnbox) * (GlobalVariables.MINERAL_BOX_GROUND_LEVEL - servoturnpos) + servoturnpos;
-                } else {
-                    mineralboxpos = 0;
-                }
-            } else {
+            if (mil1ticks > 460) {
                 mineralboxpos = ((boxmil1ticks - droplevelticks) / tickstoturnbox) * (GlobalVariables.MINERAL_BOX_GROUND_LEVEL - servoturnpos) + servoturnpos;
+                scoopcomplete = true;
+            } else {
+                mineralboxpos = 0;
             }
+
             mineralboxservo.setPosition(mineralboxpos);
 
             if (mil1ticks > 300) {
-                mineralslidesblockservo.setPosition(.97);
+                mineralslidesblockservo.setPosition(.96);
             }
 
             if (mil1tickpersectimer.seconds() > .05) {
@@ -775,33 +780,35 @@ abstract public class Nav_Routines extends LinearOpMode {
             }
 
             if (mil1ticks < 120) {
-                mil1.setPower(-.9);
-                mil2.setPower(-.9);
-            } else if (mil1ticks < 375) {
-                mil1.setPower(-.4);
-                mil2.setPower(-.4);
-                if (liftticks > 1000) {
+                mil1.setPower(-1);
+                mil2.setPower(-1);
+            } else if (mil1ticks < 420) {
+                mil1.setPower(-.75);
+                mil2.setPower(-.75);
+                if (liftticks > liftlowerticks) {
                     liftmotor.setPower(1);
                 } else {
                     liftmotor.setPower(0);
                 }
-            } else if (mil1ticks < 460) {
-                if (liftticks > 1000) {
+            } else if (mil1ticks < 445) {
+                if (liftticks > liftlowerticks) {
                     liftmotor.setPower(1);
                 } else {
                     liftmotor.setPower(0);
                 }
-                if (mil1tickspersec > 1100 && liftticks > 500) {
+                if (mil1tickspersec > 700 && liftticks > liftlowerticks) {
                     mil1.setPower(0);
                     mil2.setPower(0);
                 } else {
-                    mil1.setPower(-.2);
-                    mil2.setPower(-.2);
+                    mil1.setPower(-.25);
+                    mil2.setPower(-.25);
                 }
             } else {
                 mil1.setPower(0);
                 mil2.setPower(0);
-                deploying = false;
+                if (scoopcomplete) {
+                    deploying = false;
+                }
             }
         }
     }
@@ -812,10 +819,11 @@ abstract public class Nav_Routines extends LinearOpMode {
         int phase;
         double boxmil1ticks;
         double mineralboxpos;
-        final double servoturnpos = .20; // the pos where the servo starts turning
+        final double servoturnpos = .17; // the pos where the servo starts turning
         final double maxmil1ticks = GlobalVariables.MAX_MIL1_TICKS;
-        final double droplevelticks = 90;
-        final double liftdropticks = 3200;
+        final double droplevelticks = 70;
+        final double liftdropticks = 1075;
+        final double liftlowerticks = liftdropticks / 4;
         final double tickstoturnbox = maxmil1ticks - droplevelticks;
         boolean raising = true;
 
@@ -834,7 +842,7 @@ abstract public class Nav_Routines extends LinearOpMode {
             mineralboxpos = ((boxmil1ticks - droplevelticks) / tickstoturnbox) * (GlobalVariables.MINERAL_BOX_GROUND_LEVEL - servoturnpos) + servoturnpos;
             mineralboxservo.setPosition(mineralboxpos);
 
-            if (mil1ticks > 200) {
+            if (mil1ticks > 225) {
                 phase = 1;
             } else if (mil1ticks > droplevelticks) {
                 phase = 2;
@@ -843,18 +851,13 @@ abstract public class Nav_Routines extends LinearOpMode {
             }
 
             if (phase == 1) {
-                if (liftticks > 1000) {
+                if (liftticks > liftlowerticks) {
                     liftmotor.setPower(1);
                 } else {
                     liftmotor.setPower(0);
                 }
-                if (mil1ticks > 300) {
                     mil1.setPower(1);
                     mil2.setPower(1);
-                } else {
-                    mil1.setPower(.65);
-                    mil2.setPower(.65);
-                }
             }
 
             if (phase == 2) {
@@ -863,12 +866,15 @@ abstract public class Nav_Routines extends LinearOpMode {
                 } else {
                     liftmotor.setPower(0);
                 }
-                if (mil1ticks > 120) {
-                    mil1.setPower(.3);
-                    mil2.setPower(.3);
-                } else {
+                if (mil1ticks > 130) {
+                    mil1.setPower(.55);
+                    mil2.setPower(.55);
+                } else if (mil1ticks > droplevelticks + 25) {
                     mil1.setPower(.1);
                     mil2.setPower(.1);
+                } else {
+                    mil1.setPower(.3);
+                    mil2.setPower(.3);
                 }
             }
 
@@ -1013,7 +1019,7 @@ abstract public class Nav_Routines extends LinearOpMode {
 
         while (extending && opModeIsActive()) {
             liftticks = liftmotorstartticks - liftmotor.getCurrentPosition();
-            if (liftticks < 2000) {
+            if (liftticks < 400) {
                 liftmotor.setPower(-1);
             } else {
                 liftmotor.setPower(0);
@@ -1158,8 +1164,8 @@ abstract public class Nav_Routines extends LinearOpMode {
             sleep(100); //This is to slow down the reads
         }
 
-        if (Math.abs(closestbottom1 - closestbottom2) > 70){ //Throw out minerals that are too far back
-            if (closestbottom1 < closestbottom2){
+        if (Math.abs(closestbottom1 - closestbottom2) > 70) { //Throw out minerals that are too far back
+            if (closestbottom1 < closestbottom2) {
                 closestbottom1 = 0;
                 DbgLog.msg("10435 Throwing out Mineral 1");
             } else {
@@ -1168,14 +1174,14 @@ abstract public class Nav_Routines extends LinearOpMode {
             }
         }
 
-        if (closestbottom1 != 0 && closestlabel1 == "Gold Mineral"){
-            if (closestLeft1 > 250){
+        if (closestbottom1 != 0 && closestlabel1 == "Gold Mineral") {
+            if (closestLeft1 > 250) {
                 LCR = 3;
             } else {
                 LCR = 2;
             }
-        } else if (closestbottom2 != 0 && closestlabel2 == "Gold Mineral"){
-            if (closestLeft2 > 250){
+        } else if (closestbottom2 != 0 && closestlabel2 == "Gold Mineral") {
+            if (closestLeft2 > 250) {
                 LCR = 3;
             } else {
                 LCR = 2;
