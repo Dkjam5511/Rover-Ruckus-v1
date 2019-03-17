@@ -7,6 +7,6 @@ public class NavRountinesTest extends Nav_Routines {
     @Override
     public void runOpMode() throws InterruptedException {
         Nav_Init();
-       go_forward(36,0,-.4, true);
+       go_forward(36,0,-.4,false);
     }
 }

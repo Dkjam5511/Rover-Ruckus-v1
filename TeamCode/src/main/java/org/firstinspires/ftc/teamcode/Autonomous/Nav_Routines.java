@@ -4,6 +4,7 @@ package org.firstinspires.ftc.teamcode.Autonomous;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.rev.Rev2mDistanceSensor;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.Servo;
@@ -36,7 +37,7 @@ abstract public class Nav_Routines extends LinearOpMode {
     DcMotor liftmotor;
     Servo mineralslidesblockservo;
     Servo mineralboxservo;
-    Servo mineralintakeservo;
+    CRServo mineralintakeservo;
     Servo markerknockservo;
     DigitalChannel magneticlimitswitch;
     Rev2mDistanceSensor leftdistancesensor;
@@ -77,12 +78,12 @@ abstract public class Nav_Routines extends LinearOpMode {
         mil2 = hardwareMap.dcMotor.get("mil2");
         mineralslidesblockservo = hardwareMap.servo.get("msbs");
         mineralboxservo = hardwareMap.servo.get("mbs");
-        mineralintakeservo = hardwareMap.servo.get("mis");
+        mineralintakeservo = hardwareMap.crservo.get("mis");
         markerknockservo = hardwareMap.servo.get("mks");
         backdistancesensor = hardwareMap.get(Rev2mDistanceSensor.class, "bds");
         leftdistancesensor = hardwareMap.get(Rev2mDistanceSensor.class, "lds");
         rightdistancesensor = hardwareMap.get(Rev2mDistanceSensor.class, "rds");
-        magneticlimitswitch = hardwareMap.digitalChannel.get("mls");
+        magneticlimitswitch = hardwareMap.digitalChannel.get("lsw");
 
         rightFront.setDirection(DcMotor.Direction.REVERSE);
         rightRear.setDirection(DcMotor.Direction.REVERSE);
@@ -143,7 +144,7 @@ abstract public class Nav_Routines extends LinearOpMode {
             int tfodMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
                     "tfodMonitorViewId", "id", hardwareMap.appContext.getPackageName());
             TFObjectDetector.Parameters tfodParameters = new TFObjectDetector.Parameters(tfodMonitorViewId);
-            tfodParameters.minimumConfidence = .5;
+            tfodParameters.minimumConfidence = .4;
             tfod = ClassFactory.getInstance().createTFObjectDetector(tfodParameters, vuforia);
             tfod.loadModelFromAsset("RoverRuckus.tflite", "Gold Mineral", "Silver Mineral");
         } else {
@@ -296,7 +297,7 @@ abstract public class Nav_Routines extends LinearOpMode {
             ticks_traveled_r_Rear = Math.abs(rightRear.getCurrentPosition() - start_position_r_Rear);
 
             // of the 4 wheels, determines lowest ticks traveled
-            lowest_ticks_traveled_l = Math.min(ticks_traveled_l_Front, ticks_traveled_l_Rear);
+            lowest_ticks_traveled_l = (ticks_traveled_l_Front);
             lowest_ticks_traveled_r = Math.min(ticks_traveled_r_Front, ticks_traveled_r_Rear);
             lowest_ticks_traveled = Math.min(lowest_ticks_traveled_l, lowest_ticks_traveled_r);
 
@@ -738,9 +739,9 @@ abstract public class Nav_Routines extends LinearOpMode {
         double boxmil1ticks;
         double mineralboxpos;
         final double maxmil1ticks = GlobalVariables.MAX_MIL1_TICKS;
-        final double servoturnpos = .20; // the pos where the servo starts turning
+        final double servoturnpos = .16; // the pos where the servo starts turning
         final double droplevelticks = 70;
-        final double liftdropticks = 1075;
+        final double liftdropticks = 1150;
         final double liftlowerticks = liftdropticks / 4;
         final double tickstoturnbox = maxmil1ticks - droplevelticks;
         boolean scoopcomplete = false;
@@ -819,10 +820,10 @@ abstract public class Nav_Routines extends LinearOpMode {
         int phase;
         double boxmil1ticks;
         double mineralboxpos;
-        final double servoturnpos = .17; // the pos where the servo starts turning
+        final double servoturnpos = .16; // the pos where the servo starts turning
         final double maxmil1ticks = GlobalVariables.MAX_MIL1_TICKS;
         final double droplevelticks = 70;
-        final double liftdropticks = 1075;
+        final double liftdropticks = 1150;
         final double liftlowerticks = liftdropticks / 4;
         final double tickstoturnbox = maxmil1ticks - droplevelticks;
         boolean raising = true;

@@ -4,8 +4,8 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
-@TeleOp(name = "MI Rotation Test", group = "Tests")
-public class MineralIntakeRotationTest extends OpMode {
+@TeleOp(name = "Mineral Arm Rotation Test", group = "Tests")
+public class MineralArmRotationTest extends OpMode {
 
     DcMotor mil1;
     DcMotor mil2;

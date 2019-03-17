@@ -20,6 +20,7 @@ public class TfodGoldAutonomousFlex extends Nav_Routines {
         go_sideways(270,0,.3,4);
         go_forward(4,0,.4,false);
         winchdown();
+
         if (LCR == 1){
             mineralheading = 340;
             mineraldistance = 6;
@@ -28,7 +29,7 @@ public class TfodGoldAutonomousFlex extends Nav_Routines {
             mineraldistance = 8;
         }
         turn_to_heading(mineralheading);
-        mineralintakeservo.setPosition(0);
+        mineralintakeservo.setPower(0);
         deploymineralarm();
         extendmienralarm();
         go_forward(mineraldistance, mineralheading, .3,false);
@@ -36,7 +37,7 @@ public class TfodGoldAutonomousFlex extends Nav_Routines {
         go_forward(mineraldistance + 3, mineralheading, -.3, false);
         turn_to_heading(350);
         dumpmineral();
-        mineralintakeservo.setPosition(.5);
+        mineralintakeservo.setPower(.5);
         go_forward(14.5,0,.4,false);
         gosidewaysretract(270,0, .55, 30);
         turn_to_heading(225);
@@ -52,7 +53,7 @@ public class TfodGoldAutonomousFlex extends Nav_Routines {
         wallfollow(43 - distancetraveledtodepot, 225, .45, 3.5, false, false);
         go_forward(14, 225, .4, true);
 
-        mineralintakeservo.setPosition(0);
+        mineralintakeservo.setPower(0);
         deploymineralarm();
         extendmienralarm();
     }
