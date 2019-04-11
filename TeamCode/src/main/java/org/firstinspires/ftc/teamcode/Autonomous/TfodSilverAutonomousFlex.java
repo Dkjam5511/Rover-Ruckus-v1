@@ -28,7 +28,7 @@ public class TfodSilverAutonomousFlex extends Nav_Routines {
             mineraldistance = 8;
         }
         turn_to_heading(mineralheading);
-        mineralintakeservo.setPower(0);
+        mineralintakeservo.setPower(-.88);
         deploymineralarm();
         extendmienralarm();
         go_forward(mineraldistance, mineralheading, .3,false);
@@ -36,7 +36,7 @@ public class TfodSilverAutonomousFlex extends Nav_Routines {
         go_forward(mineraldistance + 4, mineralheading, -.3, false);
         turn_to_heading(10);
         dumpmineral();
-        mineralintakeservo.setPower(.5);
+        mineralintakeservo.setPower(0);
         go_forward(14.5,0,.4,false);
         gosidewaysretract(270,0, .55, 30);
         turn_to_heading(45);
@@ -49,10 +49,10 @@ public class TfodSilverAutonomousFlex extends Nav_Routines {
         deploymarker2();
 
         // go to crater
-        wallfollow(43 - distancetraveledtodepot, 45, .45, 3.5, true, false);
+        wallfollow(40 - distancetraveledtodepot, 45, .45, 3.5, true, false);
         go_forward(14, 45, .4, true);
 
-        mineralintakeservo.setPower(0);
+        mineralintakeservo.setPower(-.88);
         deploymineralarm();
         extendmienralarm();
     }

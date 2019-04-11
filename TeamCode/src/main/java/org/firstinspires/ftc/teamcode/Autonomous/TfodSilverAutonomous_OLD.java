@@ -3,8 +3,8 @@ package org.firstinspires.ftc.teamcode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 
-@Disabled//(name = "Tfod Gold Autonomous", group = "TfodAutonomous")
-public class TfodGoldAutonomous extends Nav_Routines {
+@Disabled//(name = "Tfod Silver Autonomous", group = "TfodAutonomous")
+public class TfodSilverAutonomous_OLD extends Nav_Routines {
 
     boolean goldfound = false;
     int leftcenterright = 1; // 1 = left, 2 = center, 3 = right
@@ -20,7 +20,7 @@ public class TfodGoldAutonomous extends Nav_Routines {
         go_forward(4,0,.4,false);
         goldfound = checktfod();
         if (!goldfound) {
-            go_forward(14, 0, -.4, false);
+            go_forward(13, 0, -.4, false);
             goldfound = checktfod();
             if (!goldfound) {
                 go_forward(29, 0, .4, false);
@@ -39,18 +39,18 @@ public class TfodGoldAutonomous extends Nav_Routines {
 
         go_forward(14 + (12 * leftcenterright), 0, .35, false);
 
-        turn_to_heading(135);
-        go_sideways_to_wall(135, .5, 5, true);
+        turn_to_heading(315);
+        go_sideways_to_wall(315, .5, 5, false);
         // go to depot
-        wallfollow(28, 135, .4, 5, true, false );
-        distancetraveledtodepot = wallfollow(14, 135, .4, 5, true, true);
+        wallfollow(28, 315, .4, 5, false, false);
+        distancetraveledtodepot = wallfollow(14, 315, .2, 5, false, true);
 
         //drop the marker
         deploymarker2();
 
         // go to crater
-        wallfollow(43 - distancetraveledtodepot, 135, -.4, 5, true, false);
-        go_forward(14, 135, -.4, true);
+        wallfollow(43 - distancetraveledtodepot, 315, -.4, 5, false, false);
+        go_forward(14, 315, -.4, true);
 
 
     }

@@ -32,16 +32,17 @@ public class TeleOp_10435 extends OpMode {
     double mil1tickspersec;
     double mineralboxpos = 1;
     double speedmodifier = 1;
-    double boxboost = 0;
     boolean autoliftmode = false;
     boolean dropliftmmode = false;
     boolean xispressed = false;
     boolean yispressed = false;
     boolean intakeon = false;
+    boolean intakereverse = false;
     boolean mineralarmendgame = false;
     boolean canuseautoliftmode = false;
     boolean boxScoop = false;
-    boolean dpadDownPressed = false;
+    boolean aPressed = false;
+    boolean magnethit = false;
     int mil1ticks;
 
     ElapsedTime mineralliftmodetimer = new ElapsedTime();
@@ -54,6 +55,8 @@ public class TeleOp_10435 extends OpMode {
     ElapsedTime boxtimer = new ElapsedTime();
     ElapsedTime boxscooptimer = new ElapsedTime();
     ElapsedTime liftmotorstartticktimer = new ElapsedTime();
+
+    final double closeslideblockticks = GlobalVariables.MAX_MIL1_TICKS * .637;
 
     @Override
     public void init() {
@@ -72,7 +75,6 @@ public class TeleOp_10435 extends OpMode {
         limitswitchwinch = hardwareMap.digitalChannel.get("lsw");
         limitswitchmineralarm = hardwareMap.digitalChannel.get("lsma");
 
-
         mil1startticks = 0; //mil1.getCurrentPosition();
         mil2startticks = 0; //mil2.getCurrentPosition();
         liftMotorstartticks = 0; //liftMotor.getCurrentPosition();
@@ -80,6 +82,9 @@ public class TeleOp_10435 extends OpMode {
         rightFront.setDirection(DcMotor.Direction.REVERSE);
         rightRear.setDirection(DcMotor.Direction.REVERSE);
         winchMotor.setDirection(DcMotor.Direction.REVERSE);
+        mil2.setDirection(DcMotor.Direction.REVERSE);
+        liftMotor.setDirection(DcMotor.Direction.REVERSE);
+
 
         leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -92,9 +97,7 @@ public class TeleOp_10435 extends OpMode {
 
         mil1ticks = mil1startticks - mil1.getCurrentPosition();
 
-        if (mil1ticks >= 300) {
-
-        } else {
+        if (mil1ticks < closeslideblockticks) {
             mineralSlidesBlockServo.setPosition(.5);
         }
         markerKnockServo.setPosition(0);
@@ -139,6 +142,7 @@ public class TeleOp_10435 extends OpMode {
         if (Math.abs(leftsticky) <= .15) {
             leftsticky = 0;
         }
+
         wheelpower = Math.hypot(leftstickx, leftsticky);
         stickangleradians = Math.atan2(leftsticky, leftstickx);
 
@@ -164,14 +168,14 @@ public class TeleOp_10435 extends OpMode {
         }
 
         if (intakeon) {
-            if (gamepad1.right_trigger == 1) {
-                mineralIntakeServo.setPower(.88);
+            if ((gamepad1.right_trigger == 1) || intakereverse) {
+                mineralIntakeServo.setPower(GlobalVariables.MINERAL_INTAKE_REVERSE_SPEED);
             } else {
-                mineralIntakeServo.setPower(-.88);
+                mineralIntakeServo.setPower(GlobalVariables.MINERAL_INTAKE_FORWARD_SPEED);
             }
         } else {
             if (gamepad1.right_trigger == 1) {
-                mineralIntakeServo.setPower(.88);
+                mineralIntakeServo.setPower(GlobalVariables.MINERAL_INTAKE_REVERSE_SPEED);
             } else {
                 mineralIntakeServo.setPower(0);
             }
@@ -182,11 +186,20 @@ public class TeleOp_10435 extends OpMode {
         int mil2ticks;
         int liftticks;
         int phase = 0;
-        final double servoturnpos = .16; // the pos where the servo starts turning
         final double maxmil1ticks = GlobalVariables.MAX_MIL1_TICKS;
-        final double droplevelticks = 70;
-        final int liftdropticks = 1150;
-        final double liftlowerticks = liftdropticks / 4;
+        final double droplevelticks = GlobalVariables.MAX_MIL1_TICKS * .155;   // was 70 with the Core Hex motors
+        final double scoopingticks = GlobalVariables.MAX_MIL1_TICKS * .96;  // at this percent, the arm is considered at the level to scoop
+        final double fullspeeddeployticks = GlobalVariables.MAX_MIL1_TICKS * .255;
+        final double mediumspeeddeployticks = GlobalVariables.MAX_MIL1_TICKS * .828;
+        final double brakingdeployticks = GlobalVariables.MAX_MIL1_TICKS * .87;
+        final double maxtickspersecond = GlobalVariables.MAX_MIL1_TICKS * 1.5;
+        final double raisingfullspeedticks = GlobalVariables.MAX_MIL1_TICKS * .5;
+        final double raisingslowerticks = GlobalVariables.MAX_MIL1_TICKS * .4;
+        final double raisingreallyslowticks = GlobalVariables.MAX_MIL1_TICKS * .202;
+
+        final int liftdropticks = GlobalVariables.LIFT_DROP_TICKS;
+        final int liftraiseretractticks = liftdropticks / 2;  // retract lift this far when lift angle is raising
+        final int liftlowerretractticks = liftdropticks / 4;  // retract lift this far when lift angle is lowering
         final double tickstoturnbox = maxmil1ticks - droplevelticks; // box must be fully turned between droplevelticks and droplevelticks + tickstoturnbox
         double boxmil1ticks;
 
@@ -194,7 +207,7 @@ public class TeleOp_10435 extends OpMode {
 
         mil2ticks = mil2startticks - mil2.getCurrentPosition();
 
-        liftticks = liftMotorstartticks - liftMotor.getCurrentPosition();
+        liftticks = liftMotor.getCurrentPosition() - liftMotorstartticks;
 
         if (mil1tickpersectimer.seconds() > .05) {
             mil1tickspersec = (mil1ticks - prevmil1ticks) / mil1tickpersectimer.seconds();
@@ -207,7 +220,7 @@ public class TeleOp_10435 extends OpMode {
         if (gamepad2.y && ytimer.seconds() > .35) {
             yispressed = !yispressed;
             silvermineraldroptimer.reset();
-            mineralboxpos = .43;
+            mineralboxpos = GlobalVariables.MINERAL_BOX_HALF_DROP;
             ytimer.reset();
         }
 
@@ -219,8 +232,7 @@ public class TeleOp_10435 extends OpMode {
 
         //Mineral Box
         if (yispressed) {
-            // mineralboxpos = .43;
-            if (silvermineraldroptimer.seconds() > .75) {
+            if (silvermineraldroptimer.seconds() > GlobalVariables.MINERAL_BOX_HALFDROP_TURN_TIME + GlobalVariables.MINERAL_BOX_HALFDROP_PAUSE_TIME) {
                 mineralboxpos = GlobalVariables.MINERAL_BOX_FULL_DROP;
             }
             xispressed = false;
@@ -228,13 +240,6 @@ public class TeleOp_10435 extends OpMode {
             mineralboxpos = GlobalVariables.MINERAL_BOX_FULL_DROP;
             yispressed = false;
         } else {     // move the mineral box servo to angle that is based on the mineral arm angle (mil1ticks)
-            /*
-            if(autoliftmode){
-                minrangedifference = .55;  // tip the box up a bit more if we're trying to lift
-            } else {
-                minrangedifference = .36;
-            }
-            */
             boxmil1ticks = mil1ticks;
             if (boxmil1ticks > droplevelticks + tickstoturnbox) {   // set the max for boxmilticks
                 boxmil1ticks = droplevelticks + tickstoturnbox;
@@ -242,48 +247,39 @@ public class TeleOp_10435 extends OpMode {
             if (boxmil1ticks < droplevelticks) {                     // set the min for boxmilticks
                 boxmil1ticks = droplevelticks;
             }
-            if (boxScoop && mil1ticks < 465) {
-                mineralboxpos = .25;
+            if (boxScoop && mil1ticks < scoopingticks) {
+                mineralboxpos = GlobalVariables.MINERAL_BOX_BEGINSCOOP_POS;  // hold the box back to this position until arm is almost down
                 boxscooptimer.reset();
-            } else if (boxscooptimer.seconds() < .1) {
-                mineralboxpos = .25;
-            } else {
-                mineralboxpos = ((boxmil1ticks - droplevelticks) / tickstoturnbox) * (GlobalVariables.MINERAL_BOX_GROUND_LEVEL - servoturnpos) + servoturnpos + boxboost; // makes a range from .2 to .51
-
+            } else if (boxscooptimer.seconds() > .1) {
+                if (autoliftmode || dropliftmmode || mineralarmendgame || mil1ticks <= droplevelticks + 20) {
+                    mineralboxpos = ((boxmil1ticks - droplevelticks) / tickstoturnbox) * (GlobalVariables.MINERAL_BOX_BEGINLIFT_POS - GlobalVariables.MINERAL_BOX_LIFTED_POS) + GlobalVariables.MINERAL_BOX_LIFTED_POS;
+                } else {
+                    mineralboxpos = ((boxmil1ticks - droplevelticks) / tickstoturnbox) * (GlobalVariables.MINERAL_BOX_INTAKE_POS - GlobalVariables.MINERAL_BOX_LIFTED_POS) + GlobalVariables.MINERAL_BOX_LIFTED_POS;
+                }
             }
         }
 
         mineralBoxServo.setPosition(mineralboxpos);
 
-        if (mil1ticks >= 300) {
+        if (mil1ticks >= closeslideblockticks) {
             mineralSlidesBlockServo.setPosition(.96);
             canuseautoliftmode = true;
             yispressed = false;
             xispressed = false;
         }
 
-        dpadDownPressed = gamepad2.a;
+        aPressed = gamepad2.a;
+
 
         if (gamepad2.b && mineralliftmodetimer.seconds() >= .35) {
             autoliftmode = !autoliftmode;
             dropliftmmode = false;
             mineralarmendgame = false;
             boxScoop = false;
+            intakereverse = false;
+            magnethit = false;
             mineralliftmodetimer.reset();
             boxtimer.reset();
-        }
-
-        if ((gamepad2.dpad_down || dpadDownPressed) && mineraldropmodetimer.seconds() >= .35) {
-            dropliftmmode = !dropliftmmode;
-            autoliftmode = false;
-            mineralarmendgame = false;
-            mineraldropmodetimer.reset();
-            boxScoop = dpadDownPressed;
-        }
-
-        if (gamepad2.dpad_left && liftmotorstartticktimer.seconds() > 1) {
-            liftMotorstartticks = liftdropticks - liftticks;
-            liftmotorstartticktimer.reset();
         }
 
         if (gamepad2.dpad_up && mineralarmendgametimer.seconds() >= .35) {
@@ -291,104 +287,118 @@ public class TeleOp_10435 extends OpMode {
             dropliftmmode = false;
             autoliftmode = false;
             boxScoop = false;
+            intakereverse = false;
             mineralarmendgametimer.reset();
         }
 
+        if ((gamepad2.dpad_down || aPressed) && mineraldropmodetimer.seconds() >= .35) {
+            dropliftmmode = !dropliftmmode;
+            autoliftmode = false;
+            mineralarmendgame = false;
+            mineraldropmodetimer.reset();
+            boxScoop = aPressed;
+            intakereverse = false;
+        }
+
+        if (gamepad2.dpad_left && liftmotorstartticktimer.seconds() > 1) {
+            liftMotorstartticks = liftdropticks - liftticks;
+            liftmotorstartticktimer.reset();
+        }
+
         if (autoliftmode && canuseautoliftmode || mineralarmendgame) {
-            if (boxtimer.seconds() < .2) {
-                boxboost = .05;
-            } else if (mil1ticks > 225) {
+
+            intakereverse = false;
+
+            if (!limitswitchmineralarm.getState()) {   // adjust start ticks
+                liftMotorstartticks = liftdropticks - liftMotor.getCurrentPosition();
+                liftticks = liftMotor.getCurrentPosition() - liftMotorstartticks;
+            }
+
+            if (mil1ticks > raisingfullspeedticks) {
                 phase = 1;
             } else if (mil1ticks > droplevelticks) {
                 phase = 2;
-                boxboost = 0;
             } else {
                 mineralarmendgame = false;
                 phase = 3;
             }
 
-            if (phase == 1) {
-                if (liftticks > liftlowerticks) {
-                    liftMotor.setPower(1);
-                } else {
-                    liftMotor.setPower(0);
-                }
-                mil1.setPower(1);
-                mil2.setPower(1);
-                 /*else {
-                    mil1.setPower(.65);
-                    mil2.setPower(.65);
-                }
-                */
-            }
 
-            if (phase == 2) {
-                if (!mineralarmendgame) {
-                    if (limitswitchmineralarm.getState()) {
+            if (phase == 1) {
+                if (boxtimer.seconds() <= .2) {  // don't start phase 1 until box has a chance to turn and we sweep backwards
+                    intakereverse = true;
+                } else {
+                    if (liftticks > liftraiseretractticks) {  // retract mineral arm
                         liftMotor.setPower(-1);
                     } else {
                         liftMotor.setPower(0);
                     }
+                    mil1.setPower(1);
+                    mil2.setPower(1);
                 }
-                if (mil1ticks > 130) {
-                    mil1.setPower(.4);
-                    mil2.setPower(.4);
-                } else if (mil1ticks > droplevelticks + 25) {
-                    mil1.setPower(.1);
-                    mil2.setPower(.1);
+            }
+
+            if (phase == 2) {
+                if (!mineralarmendgame) {
+                    if (liftticks < liftdropticks) {  //extend mineral arm
+                        liftMotor.setPower(1);
+                    } else {
+                        liftMotor.setPower(0);
+                    }
+                }
+                if (mil1ticks > raisingslowerticks) {
+                    mil1.setPower(.25);
+                    mil2.setPower(.25);
+                } else if (mil1ticks > raisingreallyslowticks) {
+                    mil1.setPower(.05);
+                    mil2.setPower(.05);
                 } else {
-                    mil1.setPower(.3);
-                    mil2.setPower(.3);
+                    mil1.setPower(.18);
+                    mil2.setPower(.18);
                 }
             }
 
             if (phase == 3) {
+
                 /*
-                if (mil1ticks < droplevelticks){
+                if (mil1ticks < droplevelticks){   // constantly hold mineral arm against stopper
                     mil1.setPower(-.15);
                     mil2.setPower(-.15);
                 } else {
                     mil1.setPower(0);
                     mil2.setPower(0);
                 }
-*/
+                */
+
                 mil1.setPower(0);
                 mil2.setPower(0);
-                if (limitswitchmineralarm.getState()) {
-                    liftMotor.setPower(-1);
+
+                if (liftticks < liftdropticks) {
+                    liftMotor.setPower(1);  //extend mineral arm
                 } else {
                     liftMotor.setPower(0);
-                    liftMotorstartticks = liftdropticks - liftticks;
                     autoliftmode = false;
                 }
-                /*
-                if (liftticks < liftdropticks) {
-                    liftMotor.setPower(-1);
-                } else {
-                    liftMotor.setPower(0);
-                    //mil1startticks = (int)(mil1startticks + droplevelticks - mil1ticks);
-                }
-                */
             }
         } else if (dropliftmmode) {
-            if (mil1ticks < 120) {
+            if (mil1ticks < fullspeeddeployticks) {
                 mil1.setPower(-1);
                 mil2.setPower(-1);
-            } else if (mil1ticks < 390) {
+            } else if (mil1ticks < mediumspeeddeployticks) {
                 mil1.setPower(-.75);
                 mil2.setPower(-.75);
-                if (liftticks > liftlowerticks) {
-                    liftMotor.setPower(1);
+                if (liftticks > liftlowerretractticks) {
+                    liftMotor.setPower(-1);    // retract mineral arm
                 } else {
                     liftMotor.setPower(0);
                 }
-            } else if (mil1ticks < 420) {
-                if (liftticks > liftlowerticks) {
-                    liftMotor.setPower(1);
+            } else if (mil1ticks < brakingdeployticks) {
+                if (liftticks > liftlowerretractticks) {
+                    liftMotor.setPower(-1);   // retract mineral arm
                 } else {
                     liftMotor.setPower(0);
                 }
-                if (mil1tickspersec > 700 && liftticks > liftlowerticks) {
+                if (mil1tickspersec > maxtickspersecond && liftticks > liftlowerretractticks) {
                     mil1.setPower(0);
                     mil2.setPower(0);
                 } else {
@@ -404,17 +414,15 @@ public class TeleOp_10435 extends OpMode {
 
             yispressed = false;
             xispressed = false;
-            boxboost = 0;
 
         } else {
             mil1.setPower(gamepad2.right_stick_y);
             mil2.setPower(gamepad2.right_stick_y);
             if (mil1ticks <= droplevelticks) {
-                liftMotor.setPower(gamepad2.left_stick_y / 2);
+                liftMotor.setPower(-gamepad2.left_stick_y / 2);
             } else {
-                liftMotor.setPower(gamepad2.left_stick_y);
+                liftMotor.setPower(-gamepad2.left_stick_y);
             }
-            boxboost = 0;
         }
 
 
@@ -432,13 +440,17 @@ public class TeleOp_10435 extends OpMode {
         }
 
         telemetry.addData("Mil 1 Ticks", mil1ticks);
-        telemetry.addData("Mil 2 Ticks", mil2ticks);
-        telemetry.addData("Lift Motor Ticks", liftticks);
+        telemetry.addData("Mil 1 Ticks Percent", mil1ticks / maxmil1ticks);
+        telemetry.addData("Drop Level Ticks", droplevelticks);
+        telemetry.addData("Mil 2 Ticks Percent", mil2ticks / maxmil1ticks);
+        telemetry.addData("Lift Ticks", liftticks);
+        telemetry.addData("Lift Start Ticks", liftMotorstartticks);
         telemetry.addData("Box Pos", mineralboxpos);
         telemetry.addData("Ticks per Second", mil1tickspersec);
         telemetry.addData("Prev mil1 Ticks", prevmil1ticks);
         telemetry.addData("Phase", phase);
         telemetry.addData("mil1 Start Ticks", mil1startticks);
+        telemetry.addData("Magnet Hit", magnethit);
         telemetry.update();
 
     }

@@ -1,6 +1,8 @@
 package org.firstinspires.ftc.teamcode.Autonomous;
 
 
+import android.provider.Settings;
+
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.rev.Rev2mDistanceSensor;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -88,6 +90,8 @@ abstract public class Nav_Routines extends LinearOpMode {
         rightFront.setDirection(DcMotor.Direction.REVERSE);
         rightRear.setDirection(DcMotor.Direction.REVERSE);
         winchmotor.setDirection(DcMotor.Direction.REVERSE);
+        mil2.setDirection(DcMotor.Direction.REVERSE);
+
 
         leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftRear.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -297,7 +301,7 @@ abstract public class Nav_Routines extends LinearOpMode {
             ticks_traveled_r_Rear = Math.abs(rightRear.getCurrentPosition() - start_position_r_Rear);
 
             // of the 4 wheels, determines lowest ticks traveled
-            lowest_ticks_traveled_l = (ticks_traveled_l_Front);
+            lowest_ticks_traveled_l = Math.min(ticks_traveled_l_Front, ticks_traveled_l_Rear);
             lowest_ticks_traveled_r = Math.min(ticks_traveled_r_Front, ticks_traveled_r_Rear);
             lowest_ticks_traveled = Math.min(lowest_ticks_traveled_l, lowest_ticks_traveled_r);
 
@@ -323,6 +327,12 @@ abstract public class Nav_Routines extends LinearOpMode {
                         + " R:" + Double.toString(lowest_ticks_traveled_r) + " actual_speed:" + actual_speed + " current speed:" + current_speed + " speed:" + speed);
                 previous_log_timer = log_timer.seconds();
                 previous_ticks_traveled_L = lowest_ticks_traveled_l;
+                DbgLog.msg("10435 GO_FORWARD ticks_traveled: "
+                        + " LF:" + Double.toString(ticks_traveled_l_Front)
+                        + " RF:" + Double.toString(ticks_traveled_r_Front)
+                        + " LR:" + Double.toString(ticks_traveled_l_Rear)
+                        + " RR:" + Double.toString(ticks_traveled_r_Rear)
+                );
             }
 
             destination_reached = (lowest_ticks_traveled >= ticks_to_travel);
@@ -491,7 +501,7 @@ abstract public class Nav_Routines extends LinearOpMode {
                 + " useleft:" + Boolean.toString(useleft)
         );
 
-        while (opModeIsActive() && Math.abs(inchesreadfromwall - walldistance) > 1 && runtime.seconds() < 4) {
+        while (opModeIsActive() && Math.abs(inchesreadfromwall - walldistance) > 1 && runtime.seconds() < 2) {
 
             if (useleft) {
                 inchesreadfromwall = leftdistancesensor.getDistance(DistanceUnit.INCH);
@@ -739,8 +749,14 @@ abstract public class Nav_Routines extends LinearOpMode {
         double boxmil1ticks;
         double mineralboxpos;
         final double maxmil1ticks = GlobalVariables.MAX_MIL1_TICKS;
-        final double servoturnpos = .16; // the pos where the servo starts turning
-        final double droplevelticks = 70;
+        final double mineralboxservoturnpos = .2; // the pos where the servo starts turning
+        final double droplevelticks = GlobalVariables.MAX_MIL1_TICKS * .149;   // was 70 with the Core Hex motors
+        final double scoopingticks = GlobalVariables.MAX_MIL1_TICKS * .96;  // at this percent, the arm is considered at the level to scoop
+        final double fullspeeddeployticks = GlobalVariables.MAX_MIL1_TICKS * .255;
+        final double mediumspeeddeployticks = GlobalVariables.MAX_MIL1_TICKS * .89;
+        final double brakingdeployticks = GlobalVariables.MAX_MIL1_TICKS * .86;
+        final double maxtickspersecond = GlobalVariables.MAX_MIL1_TICKS * 1.5;
+
         final double liftdropticks = 1150;
         final double liftlowerticks = liftdropticks / 4;
         final double tickstoturnbox = maxmil1ticks - droplevelticks;
@@ -760,16 +776,16 @@ abstract public class Nav_Routines extends LinearOpMode {
             if (boxmil1ticks < droplevelticks) {                     // set the min for boxmilticks
                 boxmil1ticks = droplevelticks;
             }
-            if (mil1ticks > 460) {
-                mineralboxpos = ((boxmil1ticks - droplevelticks) / tickstoturnbox) * (GlobalVariables.MINERAL_BOX_GROUND_LEVEL - servoturnpos) + servoturnpos;
+            if (mil1ticks > scoopingticks) {
+                mineralboxpos = GlobalVariables.MINERAL_BOX_GROUND_LEVEL;
                 scoopcomplete = true;
             } else {
-                mineralboxpos = 0;
+                mineralboxpos = GlobalVariables.MINERAL_BOX_LIFTED_POS;
             }
 
             mineralboxservo.setPosition(mineralboxpos);
 
-            if (mil1ticks > 300) {
+            if (mil1ticks > droplevelticks) {
                 mineralslidesblockservo.setPosition(.96);
             }
 
@@ -780,10 +796,10 @@ abstract public class Nav_Routines extends LinearOpMode {
                 prevmil1ticks = mil1ticks;
             }
 
-            if (mil1ticks < 120) {
+            if (mil1ticks < fullspeeddeployticks) {
                 mil1.setPower(-1);
                 mil2.setPower(-1);
-            } else if (mil1ticks < 420) {
+            } else if (mil1ticks < mediumspeeddeployticks) {
                 mil1.setPower(-.75);
                 mil2.setPower(-.75);
                 if (liftticks > liftlowerticks) {
@@ -791,13 +807,13 @@ abstract public class Nav_Routines extends LinearOpMode {
                 } else {
                     liftmotor.setPower(0);
                 }
-            } else if (mil1ticks < 445) {
+            } else if (mil1ticks < brakingdeployticks) {
                 if (liftticks > liftlowerticks) {
                     liftmotor.setPower(1);
                 } else {
                     liftmotor.setPower(0);
                 }
-                if (mil1tickspersec > 700 && liftticks > liftlowerticks) {
+                if (mil1tickspersec > maxtickspersecond && liftticks > liftlowerticks) {
                     mil1.setPower(0);
                     mil2.setPower(0);
                 } else {
@@ -820,13 +836,19 @@ abstract public class Nav_Routines extends LinearOpMode {
         int phase;
         double boxmil1ticks;
         double mineralboxpos;
-        final double servoturnpos = .16; // the pos where the servo starts turning
+        final double mineralboxservoturnpos = .2; // the pos where the servo starts turning
         final double maxmil1ticks = GlobalVariables.MAX_MIL1_TICKS;
-        final double droplevelticks = 70;
-        final double liftdropticks = 1150;
-        final double liftlowerticks = liftdropticks / 4;
+        final double droplevelticks = GlobalVariables.MAX_MIL1_TICKS * .149;   // was 70 with the Core Hex motors
+        final double raisingfullspeedticks = GlobalVariables.MAX_MIL1_TICKS * .478;
+        final double raisingslowerticks = GlobalVariables.MAX_MIL1_TICKS * .276;
+        final double raisingreallyslowticks = GlobalVariables.MAX_MIL1_TICKS * .202;
+
+        final int liftdropticks = GlobalVariables.LIFT_DROP_TICKS;
+        final int liftlowerticks = liftdropticks / 4;
         final double tickstoturnbox = maxmil1ticks - droplevelticks;
         boolean raising = true;
+
+        ElapsedTime boxtimer = new ElapsedTime();
 
         while (raising && opModeIsActive()) {
             mil1ticks = mil1startticks - mil1.getCurrentPosition();
@@ -840,10 +862,12 @@ abstract public class Nav_Routines extends LinearOpMode {
                 boxmil1ticks = droplevelticks;
             }
 
-            mineralboxpos = ((boxmil1ticks - droplevelticks) / tickstoturnbox) * (GlobalVariables.MINERAL_BOX_GROUND_LEVEL - servoturnpos) + servoturnpos;
+            mineralboxpos = ((boxmil1ticks - droplevelticks) / tickstoturnbox) * (GlobalVariables.MINERAL_BOX_GROUND_LEVEL + .05 - mineralboxservoturnpos) + mineralboxservoturnpos + .02;
             mineralboxservo.setPosition(mineralboxpos);
-
-            if (mil1ticks > 225) {
+            if (boxtimer.seconds() < .2) {
+                //waiting for box to turn
+            }
+            if (mil1ticks > raisingfullspeedticks) {
                 phase = 1;
             } else if (mil1ticks > droplevelticks) {
                 phase = 2;
@@ -867,10 +891,10 @@ abstract public class Nav_Routines extends LinearOpMode {
                 } else {
                     liftmotor.setPower(0);
                 }
-                if (mil1ticks > 130) {
+                if (mil1ticks > raisingslowerticks) {
                     mil1.setPower(.55);
                     mil2.setPower(.55);
-                } else if (mil1ticks > droplevelticks + 25) {
+                } else if (mil1ticks > raisingreallyslowticks) {
                     mil1.setPower(.1);
                     mil2.setPower(.1);
                 } else {
@@ -888,21 +912,6 @@ abstract public class Nav_Routines extends LinearOpMode {
                     liftmotor.setPower(0);
                     raising = false;
                 }
-            }
-        }
-    }
-
-    public void retractmineralarm() {
-        int liftticks;
-        boolean lowering = true;
-
-        while (lowering && opModeIsActive()) {
-            liftticks = liftmotorstartticks - liftmotor.getCurrentPosition();
-            if (liftticks > 200) {
-                liftmotor.setPower(1);
-            } else {
-                liftmotor.setPower(0);
-                lowering = false;
             }
         }
     }
@@ -1020,7 +1029,7 @@ abstract public class Nav_Routines extends LinearOpMode {
 
         while (extending && opModeIsActive()) {
             liftticks = liftmotorstartticks - liftmotor.getCurrentPosition();
-            if (liftticks < 400) {
+            if (liftticks < GlobalVariables.LIFT_DROP_TICKS / 3) {
                 liftmotor.setPower(-1);
             } else {
                 liftmotor.setPower(0);
