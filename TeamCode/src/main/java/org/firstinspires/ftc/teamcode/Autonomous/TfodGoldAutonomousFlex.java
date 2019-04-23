@@ -31,12 +31,12 @@ public class TfodGoldAutonomousFlex extends Nav_Routines {
         turn_to_heading(mineralheading);
         mineralintakeservo.setPower(-.88);
         deploymineralarm();
-        extendmienralarm();
+        extendmineralarm(GlobalVariables.LIFT_DROP_TICKS / 3);
         go_forward(mineraldistance, mineralheading, .3,false);
         raisemineralarm();
         go_forward(mineraldistance + 3, mineralheading, -.3, false);
         turn_to_heading(350);
-        dumpmineral();
+        dumpmineral(false);
         mineralintakeservo.setPower(0);
         go_forward(14.5,0,.4,false);
         gosidewaysretract(270,0, .55, 30);
@@ -55,6 +55,6 @@ public class TfodGoldAutonomousFlex extends Nav_Routines {
 
         mineralintakeservo.setPower(-.88);
         deploymineralarm();
-        extendmienralarm();
+        extendmineralarm(GlobalVariables.LIFT_DROP_TICKS / 3);
     }
 }
